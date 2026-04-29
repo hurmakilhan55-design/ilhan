@@ -12,6 +12,7 @@ export type UserRole = 'ADMIN' | 'TECHNICIAN';
 
 export interface Device {
   model: string;
+  brand: string;
   counter: number;
   spareTonerCount: number;
 }
@@ -50,6 +51,7 @@ export interface ServiceRequest {
   type: ServiceType;
   status: ServiceStatus;
   description: string;
+  deviceInfo?: string;
   technicianId: string;
   technicianName: string;
   createdAt: any;

@@ -42,7 +42,8 @@ import {
   X,
   Edit2,
   Trash2,
-  AlertCircle
+  AlertCircle,
+  ArrowRight
 } from 'lucide-react';
 import { auth, signInWithGoogle, logOut, db } from './lib/firebase';
 import { 
@@ -137,7 +138,10 @@ export default function App() {
     // Customers
     const qCustomers = query(collection(db, 'customers'), orderBy('name', 'asc'));
     const unsubCustomers = onSnapshot(qCustomers, (s) => {
-      setCustomers(s.docs.map(d => ({ id: d.id, ...d.data() } as Customer)));
+      const allCustomers = s.docs.map(d => ({ id: d.id, ...d.data() } as Customer));
+      // Deduplicate by name
+      const uniqueCustomers = Array.from(new Map(allCustomers.map(item => [item.name, item])).values());
+      setCustomers(uniqueCustomers);
     });
 
     // Payments
@@ -247,17 +251,30 @@ export default function App() {
     if (loading || customers.length > 0 || !userProfile || userProfile.role !== 'ADMIN') return;
 
     const seedData = async () => {
+      // Seed Mehmet Söylev
+      const mehmetId = 'mehmet_soylev_static_id';
+      const mehmetDoc = await getDoc(doc(db, 'users', mehmetId));
+      if (!mehmetDoc.exists()) {
+        await setDoc(doc(db, 'users', mehmetId), {
+          name: 'Mehmet Söylev',
+          email: 'mehmet@hurmak.com',
+          role: 'TECHNICIAN',
+          status: 'ACTIVE',
+          createdAt: serverTimestamp()
+        });
+      }
+
       const dummyCustomers = [
-        { name: 'Tekno Market A.Ş.', address: 'Bağdat Cad. No:123, İstanbul', phone: '0216 123 45 67', maintenanceIntervalMonths: 2, balance: 1500, lastVisitDate: new Date(), devices: [{ model: 'Kyocera TASKalfa 2554ci', counter: 45200, spareTonerCount: 2 }] },
-        { name: 'Güneş Hukuk Bürosu', address: 'Adalet Sok. No:5, Ankara', phone: '0312 987 65 43', maintenanceIntervalMonths: 3, balance: -500, lastVisitDate: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000), devices: [{ model: 'HP LaserJet M507dn', counter: 12500, spareTonerCount: 1 }] },
-        { name: 'Mavi İnşaat Ltd.', address: 'Şantiye Yanı No:1, İzmir', phone: '0232 444 0 555', maintenanceIntervalMonths: 1, balance: 0, lastVisitDate: new Date(), devices: [{ model: 'Brother MFC-L2710DW', counter: 8900, spareTonerCount: 3 }] },
-        { name: 'Özcan Eczanesi', address: 'Sağlık Cad. No:12, Samsun', phone: '0362 111 22 33', maintenanceIntervalMonths: 2, balance: 250, lastVisitDate: new Date(Date.now() - 65 * 24 * 60 * 60 * 1000), devices: [{ model: 'Kyocera ECOSYS M2040dn', counter: 31200, spareTonerCount: 1 }] },
-        { name: 'Global Lojistik', address: 'Liman Yolu No:88, Mersin', phone: '0324 555 66 77', maintenanceIntervalMonths: 3, balance: -2000, lastVisitDate: new Date(), devices: [{ model: 'Canon iR-ADV C3525i', counter: 112000, spareTonerCount: 0 }] },
-        { name: 'Yıldız Mimarlık', address: 'Tasarım Ofisi No:3, Bursa', phone: '0224 333 44 55', maintenanceIntervalMonths: 2, balance: 1200, lastVisitDate: new Date(), devices: [{ model: 'HP DesignJet T650', counter: 5400, spareTonerCount: 2 }] },
-        { name: 'Balkan Gıda', address: 'Sanayi Bölgesi No:44, Kocaeli', phone: '0262 777 88 99', maintenanceIntervalMonths: 1, balance: 0, lastVisitDate: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000), devices: [{ model: 'Kyocera TASKalfa 4012id', counter: 78900, spareTonerCount: 4 }] },
-        { name: 'Aras Sigorta', address: 'Güvence Han No:1, Antalya', phone: '0242 666 77 88', maintenanceIntervalMonths: 3, balance: 500, lastVisitDate: new Date(), devices: [{ model: 'Brother HL-L2350DW', counter: 15400, spareTonerCount: 2 }] },
-        { name: 'Focus Eğitim Kurumları', address: 'Okul Yolu No:10, Eskişehir', phone: '0222 555 11 22', maintenanceIntervalMonths: 2, balance: -150, lastVisitDate: new Date(Date.now() - 70 * 24 * 60 * 60 * 1000), devices: [{ model: 'Kyocera ECOSYS M5526cdw', counter: 22100, spareTonerCount: 1 }] },
-        { name: 'Ege Dental Klinik', address: 'Dişçi Sok. No:7, Aydın', phone: '0256 999 88 77', maintenanceIntervalMonths: 3, balance: 0, lastVisitDate: new Date(), devices: [{ model: 'HP Color LaserJet Pro M454dw', counter: 18900, spareTonerCount: 2 }] }
+        { name: 'Tekno Market A.Ş.', address: 'Bağdat Cad. No:123, İstanbul', phone: '0216 123 45 67', maintenanceIntervalMonths: 2, balance: 1500, lastVisitDate: new Date(), devices: [{ brand: 'Kyocera', model: 'TASKalfa 2554ci', counter: 45200, spareTonerCount: 2 }] },
+        { name: 'Güneş Hukuk Bürosu', address: 'Adalet Sok. No:5, Ankara', phone: '0312 987 65 43', maintenanceIntervalMonths: 3, balance: -500, lastVisitDate: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000), devices: [{ brand: 'HP', model: 'LaserJet M507dn', counter: 12500, spareTonerCount: 1 }] },
+        { name: 'Mavi İnşaat Ltd.', address: 'Şantiye Yanı No:1, İzmir', phone: '0232 444 0 555', maintenanceIntervalMonths: 1, balance: 0, lastVisitDate: new Date(), devices: [{ brand: 'Brother', model: 'MFC-L2710DW', counter: 8900, spareTonerCount: 3 }] },
+        { name: 'Özcan Eczanesi', address: 'Sağlık Cad. No:12, Samsun', phone: '0362 111 22 33', maintenanceIntervalMonths: 2, balance: 250, lastVisitDate: new Date(Date.now() - 65 * 24 * 60 * 60 * 1000), devices: [{ brand: 'Kyocera', model: 'ECOSYS M2040dn', counter: 31200, spareTonerCount: 1 }] },
+        { name: 'Global Lojistik', address: 'Liman Yolu No:88, Mersin', phone: '0324 555 66 77', maintenanceIntervalMonths: 3, balance: -2000, lastVisitDate: new Date(), devices: [{ brand: 'Canon', model: 'iR-ADV C3525i', counter: 112000, spareTonerCount: 0 }] },
+        { name: 'Yıldız Mimarlık', address: 'Tasarım Ofisi No:3, Bursa', phone: '0224 333 44 55', maintenanceIntervalMonths: 2, balance: 1200, lastVisitDate: new Date(), devices: [{ brand: 'HP', model: 'DesignJet T650', counter: 5400, spareTonerCount: 2 }] },
+        { name: 'Balkan Gıda', address: 'Sanayi Bölgesi No:44, Kocaeli', phone: '0262 777 88 99', maintenanceIntervalMonths: 1, balance: 0, lastVisitDate: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000), devices: [{ brand: 'Kyocera', model: 'TASKalfa 4012id', counter: 78900, spareTonerCount: 4 }] },
+        { name: 'Aras Sigorta', address: 'Güvence Han No:1, Antalya', phone: '0242 666 77 88', maintenanceIntervalMonths: 3, balance: 500, lastVisitDate: new Date(), devices: [{ brand: 'Brother', model: 'HL-L2350DW', counter: 15400, spareTonerCount: 2 }] },
+        { name: 'Focus Eğitim Kurumları', address: 'Okul Yolu No:10, Eskişehir', phone: '0222 555 11 22', maintenanceIntervalMonths: 2, balance: -150, lastVisitDate: new Date(Date.now() - 70 * 24 * 60 * 60 * 1000), devices: [{ brand: 'Kyocera', model: 'ECOSYS M5526cdw', counter: 22100, spareTonerCount: 1 }] },
+        { name: 'Ege Dental Klinik', address: 'Dişçi Sok. No:7, Aydın', phone: '0256 999 88 77', maintenanceIntervalMonths: 3, balance: 0, lastVisitDate: new Date(), devices: [{ brand: 'HP', model: 'Color LaserJet Pro M454dw', counter: 18900, spareTonerCount: 2 }] }
       ];
 
       try {
@@ -275,6 +292,77 @@ export default function App() {
 
     seedData();
   }, [loading, customers, userProfile]);
+
+  // Dummy Data Seeding (One-time)
+  useEffect(() => {
+    if (loading || customers.length === 0 || !userProfile || userProfile.role !== 'ADMIN') return;
+
+    const seedExtraData = async () => {
+      // Seed Mehmet Söylev data
+      const mehmetProfile = technicians.find(t => t.name === 'Mehmet Söylev');
+      if (mehmetProfile) {
+        const mehmetServices = services.filter(s => s.technicianId === mehmetProfile.id);
+        if (mehmetServices.length < 9) {
+          const firstCustomer = customers[0];
+          for (let i = 0; i < 9; i++) {
+            await addDoc(collection(db, 'services'), {
+              customerId: firstCustomer.id,
+              customerName: firstCustomer.name,
+              customerAddress: firstCustomer.address,
+              type: i % 2 === 0 ? 'FAULT' : 'MAINTENANCE',
+              status: 'COMPLETED',
+              description: i % 2 === 0 ? `Arıza Giderme - Örnek ${i+1}` : `Periyodik Bakım - Örnek ${i+1}`,
+              technicianId: mehmetProfile.id,
+              technicianName: mehmetProfile.name,
+              createdAt: Timestamp.fromDate(subDays(new Date(), 20 + i)),
+              completedAt: Timestamp.fromDate(subDays(new Date(), 20 + i)),
+              notes: 'Düzenli bakım ve kontroller yapıldı.',
+              photos: [],
+              checklist: [{ id: '1', label: 'İşlem Başarıyla Tamamlandı', completed: true }]
+            });
+          }
+        }
+      }
+
+      const firstCustomer = customers[0];
+      // Check if they already have services beyond auto-generated ones
+      const existingServices = services.filter(s => s.customerId === firstCustomer.id);
+      if (existingServices.length < 2) {
+        await addDoc(collection(db, 'services'), {
+          customerId: firstCustomer.id,
+          customerName: firstCustomer.name,
+          customerAddress: firstCustomer.address,
+          type: 'FAULT',
+          status: 'COMPLETED',
+          description: 'Elektronik kart arızası giderildi, testleri yapıldı.',
+          technicianId: userProfile.id,
+          technicianName: userProfile.name,
+          createdAt: Timestamp.fromDate(subDays(new Date(), 10)),
+          completedAt: Timestamp.fromDate(subDays(new Date(), 10)),
+          notes: 'Kart üzerindeki kapasitörler değiştirildi.',
+          photos: [],
+          checklist: [{ id: '1', label: 'Arıza Giderildi', completed: true }]
+        });
+        await addDoc(collection(db, 'services'), {
+          customerId: firstCustomer.id,
+          customerName: firstCustomer.name,
+          customerAddress: firstCustomer.address,
+          type: 'MAINTENANCE',
+          status: 'COMPLETED',
+          description: 'Genel bakım ve parça temizliği yapıldı.',
+          technicianId: userProfile.id,
+          technicianName: userProfile.name,
+          createdAt: Timestamp.fromDate(subDays(new Date(), 30)),
+          completedAt: Timestamp.fromDate(subDays(new Date(), 30)),
+          notes: 'Tüm merdaneler temizlendi, yağlama yapıldı.',
+          photos: [],
+          checklist: [{ id: '1', label: 'Bakım Yapıldı', completed: true }]
+        });
+      }
+    };
+
+    seedExtraData();
+  }, [loading, customers, userProfile, services]);
 
   if (loading) {
     return (
@@ -301,6 +389,8 @@ export default function App() {
           payments={payments}
           technicians={technicians}
           user={user}
+          selectedService={selectedService}
+          setSelectedService={setSelectedService}
         />
       ) : (
         <TechnicianView 
@@ -326,7 +416,9 @@ function ManagerView({
   customers, 
   payments, 
   technicians,
-  user
+  user,
+  selectedService,
+  setSelectedService
 }: { 
   tab: ManagerTab, 
   setTab: (t: ManagerTab) => void,
@@ -336,15 +428,17 @@ function ManagerView({
   customers: Customer[],
   payments: PaymentFollowUp[],
   technicians: UserProfile[],
-  user: User
+  user: User,
+  selectedService: ServiceRequest | null,
+  setSelectedService: (s: ServiceRequest | null) => void
 }) {
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Sidebar */}
       <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col hidden lg:flex">
-        <div className="p-8 border-b border-slate-800 flex items-center gap-4">
-          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-xs italic text-white leading-none">Hürmak</div>
-          <h2 className="text-sm font-black text-white uppercase tracking-tighter">YÖNETİM</h2>
+        <div className="p-6 border-b border-slate-800 flex flex-col items-center gap-4">
+          <img src="https://ais-pre-esewrng7ioiseht5ktotxi-618845641780.europe-west2.run.app/input_file_0.png" alt="Hürmak" className="w-32 h-auto" />
+          <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] -mt-2">YÖNETİM PANELİ</h2>
         </div>
         
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
@@ -399,14 +493,27 @@ function ManagerView({
                transition={{ duration: 0.2 }}
              >
                {tab === 'DASHBOARD' && <Dashboard services={services} technicians={technicians} customers={customers} payments={payments} onStatClick={onStatClick} />}
-               {tab === 'CUSTOMERS' && <CustomerManagement customers={customers} />}
-               {tab === 'DISPATCH' && <ServiceManagement services={services} technicians={technicians} customers={customers} initialFilter={selectedFilter} />}
+               {tab === 'CUSTOMERS' && <CustomerManagement customers={customers} services={services} setSelectedService={setSelectedService} />}
+               {tab === 'DISPATCH' && <ServiceManagement services={services} technicians={technicians} customers={customers} initialFilter={selectedFilter} selectedService={selectedService} setSelectedService={setSelectedService} />}
                {tab === 'MAINTENANCE' && <MaintenanceAgreements customers={customers} services={services} />}
                {tab === 'PAYMENTS' && <PaymentFollowUps payments={payments} customers={customers} />}
-               {tab === 'STAFF' && <StaffManagement technicians={technicians} services={services} />}
+               {tab === 'STAFF' && <StaffManagement technicians={technicians} services={services} setSelectedService={setSelectedService} />}
              </motion.div>
            </AnimatePresence>
         </div>
+
+        {/* Global Service Detail Modal */}
+        {selectedService && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 lg:p-12 overflow-hidden">
+            <div className="absolute inset-0 bg-slate-900/40" onClick={() => setSelectedService(null)} />
+            <ServiceDetailModal 
+              service={selectedService} 
+              onClose={() => setSelectedService(null)} 
+              isStaffView={false} 
+              technicians={technicians}
+            />
+          </div>
+        )}
 
         {/* Mobile Nav */}
         <nav className="fixed bottom-0 left-0 right-0 bg-slate-900 text-slate-400 px-4 py-3 flex justify-around items-center lg:hidden z-50">
@@ -636,7 +743,7 @@ function RecentServices({ services }: { services: ServiceRequest[] }) {
   );
 }
 
-function CustomerManagement({ customers }: { customers: Customer[] }) {
+function CustomerManagement({ customers, services, setSelectedService }: { customers: Customer[], services: ServiceRequest[], setSelectedService: (s: ServiceRequest | null) => void }) {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -656,13 +763,39 @@ function CustomerManagement({ customers }: { customers: Customer[] }) {
         phone: selectedCustomer.phone,
         address: selectedCustomer.address,
         maintenanceIntervalMonths: selectedCustomer.maintenanceIntervalMonths,
-        balance: selectedCustomer.balance
+        balance: selectedCustomer.balance,
+        devices: selectedCustomer.devices || []
       });
       setIsEditing(false);
       setSelectedCustomer(null);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'customers');
     }
+  };
+
+  const addDevice = () => {
+    if (!selectedCustomer) return;
+    const currentDevices = selectedCustomer.devices || [];
+    setSelectedCustomer({
+      ...selectedCustomer,
+      devices: [...currentDevices, { model: '', brand: '', counter: 0, spareTonerCount: 0 }]
+    });
+  };
+
+  const updateDevice = (idx: number, field: string, value: any) => {
+    if (!selectedCustomer) return;
+    const newDevices = [...(selectedCustomer.devices || [])];
+    newDevices[idx] = { ...newDevices[idx], [field]: value };
+    setSelectedCustomer({ ...selectedCustomer, devices: newDevices });
+  };
+
+  const removeDevice = (idx: number) => {
+    if (!selectedCustomer) return;
+    const currentDevices = selectedCustomer.devices || [];
+    setSelectedCustomer({
+      ...selectedCustomer,
+      devices: currentDevices.filter((_, i) => i !== idx)
+    });
   };
 
   return (
@@ -722,7 +855,7 @@ function CustomerManagement({ customers }: { customers: Customer[] }) {
                     {c.maintenanceIntervalMonths} Ay
                   </td>
                   <td className="px-8 py-4 text-right">
-                    <span className={`text-sm font-black ${c.balance < 0 ? 'text-red-500' : 'text-emerald-600'}`}>
+                    <span className={`text-sm font-black ${c.balance < 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                        ₺{Math.abs(c.balance || 0).toLocaleString('tr-TR')}
                     </span>
                   </td>
@@ -759,31 +892,97 @@ function CustomerManagement({ customers }: { customers: Customer[] }) {
               {isEditing ? (
                 <form onSubmit={handleUpdateCustomer} className="space-y-6">
                   <div className="grid grid-cols-2 gap-4">
-                    <input className="col-span-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold" placeholder="Müşteri Adı" value={selectedCustomer.name} onChange={e => setSelectedCustomer({...selectedCustomer, name: e.target.value})} />
-                    <input className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold" placeholder="Telefon" value={selectedCustomer.phone} onChange={e => setSelectedCustomer({...selectedCustomer, phone: e.target.value})} />
-                    <input type="number" className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold" placeholder="Bakım Aralığı" value={selectedCustomer.maintenanceIntervalMonths} onChange={e => setSelectedCustomer({...selectedCustomer, maintenanceIntervalMonths: parseInt(e.target.value)})} />
-                    <textarea className="col-span-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold" placeholder="Adres" value={selectedCustomer.address} onChange={e => setSelectedCustomer({...selectedCustomer, address: e.target.value})} />
-                    <input type="number" className="col-span-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold" placeholder="Bakiye" value={selectedCustomer.balance} onChange={e => setSelectedCustomer({...selectedCustomer, balance: parseInt(e.target.value)})} />
+                    <div className="col-span-2 space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Müşteri / Kurum Adı</label>
+                      <input className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold" placeholder="Müşteri Adı" value={selectedCustomer.name} onChange={e => setSelectedCustomer({...selectedCustomer, name: e.target.value})} />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">İletişim No</label>
+                      <input className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold" placeholder="Telefon" value={selectedCustomer.phone} onChange={e => setSelectedCustomer({...selectedCustomer, phone: e.target.value})} />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Bakım Aralığı (Ay)</label>
+                      <input type="number" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold" placeholder="Bakım Aralığı" value={selectedCustomer.maintenanceIntervalMonths} onChange={e => setSelectedCustomer({...selectedCustomer, maintenanceIntervalMonths: parseInt(e.target.value)})} />
+                    </div>
+                    <div className="col-span-2 space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Adres Bilgisi</label>
+                      <textarea className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold" placeholder="Adres" value={selectedCustomer.address} onChange={e => setSelectedCustomer({...selectedCustomer, address: e.target.value})} />
+                    </div>
+                    <div className="col-span-2 space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Cari Bakiye (TL)</label>
+                      <input type="number" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold" placeholder="Bakiye" value={selectedCustomer.balance} onChange={e => setSelectedCustomer({...selectedCustomer, balance: parseInt(e.target.value)})} />
+                    </div>
+
+                    <div className="col-span-2 space-y-4 pt-4 border-t border-slate-100">
+                      <div className="flex justify-between items-center">
+                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Kayıtlı Cihazlar</h4>
+                        <button type="button" onClick={addDevice} className="text-[10px] font-black text-blue-600 uppercase flex items-center gap-1 hover:text-blue-700">
+                          <Plus className="w-3 h-3" /> Cihaz Ekle
+                        </button>
+                      </div>
+                      <div className="space-y-3">
+                        {selectedCustomer.devices?.map((dev, idx) => (
+                          <div key={idx} className="bg-slate-50 p-4 rounded-xl border border-slate-200 relative">
+                            <button type="button" onClick={() => removeDevice(idx)} className="absolute top-3 right-3 text-slate-300 hover:text-red-500 transition-colors">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="space-y-1">
+                                <label className="text-[8px] font-black text-slate-400 uppercase">Marka</label>
+                                <input className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold" value={dev.brand} onChange={e => updateDevice(idx, 'brand', e.target.value)} />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[8px] font-black text-slate-400 uppercase">Model</label>
+                                <input className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold" value={dev.model} onChange={e => updateDevice(idx, 'model', e.target.value)} />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[8px] font-black text-slate-400 uppercase">Sayacı</label>
+                                <input type="number" className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold" value={dev.counter} onChange={e => updateDevice(idx, 'counter', parseInt(e.target.value))} />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[8px] font-black text-slate-400 uppercase">Yedek Toner</label>
+                                <input type="number" className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold" value={dev.spareTonerCount} onChange={e => updateDevice(idx, 'spareTonerCount', parseInt(e.target.value))} />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                  <button type="submit" className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest">Kaydet</button>
+                  <button type="submit" className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-lg shadow-blue-500/20">Değişiklikleri Kaydet</button>
                 </form>
               ) : (
                 <div className="space-y-8">
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
                     <div className="bg-slate-50 p-4 rounded-2xl">
+                      <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Müşteri İsmi</p>
+                      <p className="text-sm font-black text-slate-900">{selectedCustomer.name}</p>
+                    </div>
+                    <div className="bg-slate-50 p-4 rounded-2xl">
+                      <p className="text-[8px] font-black text-slate-400 uppercase mb-1">İletişim</p>
+                      <p className="text-sm font-black text-slate-900">{selectedCustomer.phone}</p>
+                    </div>
+                    <div className="bg-slate-50 p-4 rounded-2xl">
                       <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Bakım Aralığı</p>
-                      <p className="text-lg font-black text-slate-900">{selectedCustomer.maintenanceIntervalMonths} Ay</p>
+                      <p className="text-sm font-black text-slate-900">{selectedCustomer.maintenanceIntervalMonths} Ay</p>
                     </div>
                     <div className="bg-slate-50 p-4 rounded-2xl col-span-2">
                        <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Cari Bakiye</p>
-                       <p className={`text-xl font-black ${selectedCustomer.balance < 0 ? 'text-red-500' : 'text-emerald-600'}`}>
+                       <p className={`text-xl font-black ${selectedCustomer.balance < 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                           ₺{selectedCustomer.balance?.toLocaleString('tr-TR') || 0}
-                          <span className="text-[10px] ml-2 italic">{selectedCustomer.balance < 0 ? 'BORÇ' : 'ALACAK'}</span>
+                          <span className="text-[10px] ml-2 italic">{selectedCustomer.balance < 0 ? 'ALACAK' : 'BORÇ'}</span>
                        </p>
                     </div>
+                    <div className="bg-slate-50 p-4 rounded-2xl col-span-full">
+                       <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Adres</p>
+                       <p className="text-xs font-bold text-slate-600">{selectedCustomer.address}</p>
+                    </div>
                   </div>
+
                   <div>
-                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Cihazlar</h4>
+                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                      <Package className="w-4 h-4" /> Kayıtlı Cihazlar
+                    </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {selectedCustomer.devices?.map((dev, idx) => (
                         <div key={idx} className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-4">
@@ -796,7 +995,34 @@ function CustomerManagement({ customers }: { customers: Customer[] }) {
                       ))}
                     </div>
                   </div>
-                  <button onClick={() => setIsEditing(true)} className="w-full py-4 border-2 border-slate-900 rounded-2xl text-slate-900 font-black uppercase tracking-widest">Düzenle</button>
+
+                  <div className="pt-4">
+                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                      <ClipboardCheck className="w-4 h-4" /> Servis Geçmişi
+                    </h4>
+                    <div className="space-y-3">
+                      {services.filter(s => s.customerId === selectedCustomer.id && s.status === 'COMPLETED').length === 0 ? (
+                        <p className="text-xs font-bold text-slate-300 italic">Daha önce tamamlanmış servis formu bulunamadı.</p>
+                      ) : (
+                        services.filter(s => s.customerId === selectedCustomer.id && s.status === 'COMPLETED').map(s => (
+                          <div 
+                            key={s.id} 
+                            onClick={() => setSelectedService(s)}
+                            className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100 space-y-2 cursor-pointer hover:border-blue-200 hover:bg-slate-50 transition-all group"
+                          >
+                            <div className="flex justify-between items-center">
+                              <span className="text-[9px] font-black text-blue-600 uppercase group-hover:text-blue-700">{s.type === 'MAINTENANCE' ? 'Bakım' : 'Arıza'}</span>
+                              <span className="text-[9px] font-bold text-slate-400">{s.completedAt && typeof s.completedAt.toDate === 'function' ? format(s.completedAt.toDate(), 'dd MMM yyyy') : ''}</span>
+                            </div>
+                            <p className="text-xs font-bold text-slate-700 line-clamp-1">{s.description}</p>
+                            <p className="text-[10px] font-black text-slate-400 uppercase">Teknisyen: {s.technicianName}</p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  <button onClick={() => setIsEditing(true)} className="w-full py-4 border-2 border-slate-900 rounded-2xl text-slate-900 font-black uppercase tracking-widest hover:bg-slate-900 hover:text-white transition-all">Düzenle</button>
                 </div>
               )}
             </div>
@@ -814,13 +1040,13 @@ function CustomerForm({ onClose }: { onClose: () => void }) {
     phone: '',
     maintenanceIntervalMonths: 1,
     balance: 0,
-    devices: [{ model: '', counter: 0, spareTonerCount: 0 }]
+    devices: [{ model: '', brand: '', counter: 0, spareTonerCount: 0 }]
   });
 
   const addDevice = () => {
     setFormData({
       ...formData,
-      devices: [...formData.devices, { model: '', counter: 0, spareTonerCount: 0 }]
+      devices: [...formData.devices, { model: '', brand: '', counter: 0, spareTonerCount: 0 }]
     });
   };
 
@@ -904,12 +1130,16 @@ function CustomerForm({ onClose }: { onClose: () => void }) {
                 {formData.devices.length > 1 && (
                   <button type="button" onClick={() => removeDevice(idx)} className="absolute top-4 right-4 text-[9px] font-black text-red-500 uppercase">Sıfırla</button>
                 )}
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="col-span-3 lg:col-span-1 space-y-1">
+                <div className="grid grid-cols-4 gap-4">
+                  <div className="col-span-2 lg:col-span-1 space-y-1">
+                    <label className="text-[9px] font-bold text-slate-400 uppercase">Marka</label>
+                    <input required placeholder="Örn: Kyocera" className="w-full bg-white border-slate-200 rounded-lg px-3 py-2 text-xs font-bold" value={dev.brand} onChange={e => updateDevice(idx, 'brand', e.target.value)} />
+                  </div>
+                  <div className="col-span-2 lg:col-span-1 space-y-1">
                     <label className="text-[9px] font-bold text-slate-400 uppercase">Model</label>
                     <input required className="w-full bg-white border-slate-200 rounded-lg px-3 py-2 text-xs font-bold" value={dev.model} onChange={e => updateDevice(idx, 'model', e.target.value)} />
                   </div>
-                  <div className="space-y-1">
+                  <div className="col-span-2 lg:col-span-1 space-y-1">
                     <label className="text-[9px] font-bold text-slate-400 uppercase">Güncel Sayaç</label>
                     <input type="number" className="w-full bg-white border-slate-200 rounded-lg px-3 py-2 text-xs font-bold" value={dev.counter} onChange={e => updateDevice(idx, 'counter', Number(e.target.value))} />
                   </div>
@@ -929,99 +1159,281 @@ function CustomerForm({ onClose }: { onClose: () => void }) {
   );
 }
 
-function ServiceManagement({ services, technicians, customers, initialFilter }: { services: ServiceRequest[], technicians: UserProfile[], customers: Customer[], initialFilter: string | null }) {
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [selectedService, setSelectedService] = useState<ServiceRequest | null>(null);
+function ServiceDetailModal({ service, onClose, isStaffView, technicians }: { service: ServiceRequest, onClose: () => void, isStaffView: boolean, technicians: UserProfile[] }) {
   const [isEditing, setIsEditing] = useState(false);
+  const [editData, setEditData] = useState({ ...service });
 
-  const statusLabels: Record<string, { label: string, color: string }> = {
-    'PENDING': { label: 'Beklemede', color: 'bg-slate-500' },
-    'ASSIGNED': { label: 'Atandı', color: 'bg-blue-500' },
-    'IN_PROGRESS': { label: 'İşlemde', color: 'bg-amber-500' },
-    'WAITING_PART': { label: 'Parça Bekliyor', color: 'bg-rose-500' },
-    'REVISIT_REQUIRED': { label: 'Tekrar Gidilecek', color: 'bg-purple-500' },
-    'COMPLETED': { label: 'Tamamlandı', color: 'bg-emerald-500' },
-    'FAULT': { label: 'Arıza', color: 'bg-red-50' },
-    'MAINTENANCE': { label: 'Bakım', color: 'bg-emerald-50' },
-    'INSTALLATION': { label: 'Kurulum', color: 'bg-blue-50' }
+  const statusLabels: Record<string, { label: string, color: string, textColor: string }> = {
+    'PENDING': { label: 'Beklemede', color: 'bg-slate-500', textColor: 'text-slate-500' },
+    'ASSIGNED': { label: 'Atandı', color: 'bg-blue-500', textColor: 'text-blue-500' },
+    'IN_PROGRESS': { label: 'İşlemde', color: 'bg-amber-500', textColor: 'text-amber-500' },
+    'WAITING_PART': { label: 'Parça Bekliyor', color: 'bg-rose-500', textColor: 'text-rose-500' },
+    'REVISIT_REQUIRED': { label: 'Tekrar Gidilecek', color: 'bg-purple-500', textColor: 'text-purple-500' },
+    'COMPLETED': { label: 'Tamamlandı', color: 'bg-emerald-500', textColor: 'text-emerald-500' },
+    'INSTALLATION': { label: 'Kurulum', color: 'bg-sky-500', textColor: 'text-sky-500' }
   };
 
-  const handleUpdateService = async (e: React.FormEvent) => {
+  const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedService) return;
     try {
-      const tech = technicians.find(t => t.id === selectedService.technicianId);
-      await updateDoc(doc(db, 'services', selectedService.id), {
-        description: selectedService.description,
-        status: selectedService.status,
-        technicianId: selectedService.technicianId,
-        technicianName: tech ? tech.name : selectedService.technicianName,
-        type: selectedService.type
+      const tech = technicians.find(t => t.id === editData.technicianId);
+      await updateDoc(doc(db, 'services', service.id), {
+        ...editData,
+        technicianName: tech ? tech.name : (editData.technicianId ? 'Bilinmiyor' : 'Atanmadı'),
+        status: editData.technicianId && editData.status === 'PENDING' ? 'ASSIGNED' : editData.status
       });
-      setIsEditing(false);
-      setSelectedService(null);
+      onClose();
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'services');
     }
   };
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden pointer-events-auto">
+      <div className="bg-slate-900 p-6 text-white flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Teknik Servis Yönetimi</h2>
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">İş Emirleri ve Personel Atama</p>
+          <h3 className="text-xl font-black uppercase tracking-tight">{isEditing ? 'Düzenle' : 'Detaylar'}</h3>
+          <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">İş Emri: #{service.id.slice(-6)}</p>
+        </div>
+        <button onClick={onClose} className="p-2 text-slate-400 hover:text-white"><X className="w-8 h-8" /></button>
+      </div>
+
+      <div className="p-8 max-h-[80vh] overflow-y-auto custom-scrollbar">
+        {isEditing ? (
+          <form onSubmit={handleUpdate} className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Durum</label>
+                <select 
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold"
+                  value={editData.status}
+                  onChange={e => setEditData({...editData, status: e.target.value as any})}
+                >
+                  {Object.keys(statusLabels).map(key => (
+                    <option key={key} value={key}>{statusLabels[key].label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Teknisyen</label>
+                <select 
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold"
+                  value={editData.technicianId || ''}
+                  onChange={e => setEditData({...editData, technicianId: e.target.value})}
+                >
+                  <option value="">Atanmadı</option>
+                  {technicians.map(t => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Açıklama</label>
+              <textarea 
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold min-h-[120px]"
+                value={editData.description}
+                onChange={e => setEditData({...editData, description: e.target.value})}
+              />
+            </div>
+            {editData.status === 'COMPLETED' && (
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Teknisyen Notu</label>
+                <textarea 
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold min-h-[100px]"
+                  value={editData.notes || ''}
+                  onChange={e => setEditData({...editData, notes: e.target.value})}
+                  placeholder="Yapılan işlemleri buraya yazın..."
+                />
+              </div>
+            )}
+            <div className="flex gap-4 pt-4">
+              <button type="button" onClick={() => setIsEditing(false)} className="flex-1 py-4 border-2 border-slate-200 rounded-2xl font-black uppercase tracking-widest text-slate-400 hover:bg-slate-50 transition-all">İptal</button>
+              <button type="submit" className="flex-2 py-4 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-blue-500/20 hover:bg-blue-700 transition-all">Kaydet</button>
+            </div>
+          </form>
+        ) : (
+          <div className="space-y-8">
+            <div className="flex justify-between items-start">
+              <div>
+                <h4 className="text-2xl font-black text-slate-900 uppercase tracking-tight">{service.customerName}</h4>
+                <p className="text-xs font-bold text-slate-400 mt-1 uppercase truncate max-w-md">{service.customerAddress}</p>
+              </div>
+              <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${statusLabels[service.status]?.color || 'bg-slate-100'} text-white shadow-sm`}>
+                {statusLabels[service.status]?.label || service.status}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
+               <div className="bg-slate-50 p-4 rounded-2xl">
+                  <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Cihaz</p>
+                  <p className="text-sm font-black text-slate-900 truncate">{service.deviceInfo || 'Belirtilmemiş'}</p>
+               </div>
+               <div className="bg-slate-50 p-4 rounded-2xl">
+                  <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Teknisyen</p>
+                  <p className="text-sm font-black text-slate-900 truncate">{service.technicianName || 'Atanmadı'}</p>
+               </div>
+               <div className="bg-slate-50 p-4 rounded-2xl">
+                  <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Hizmet Türü</p>
+                  <p className="text-sm font-black text-slate-900">{service.type}</p>
+               </div>
+            </div>
+
+            <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 italic">
+               <p className="text-[8px] font-black text-slate-400 uppercase mb-2">Açıklama</p>
+               <p className="text-sm font-medium text-slate-600 leading-relaxed tabular-nums">"{service.description}"</p>
+            </div>
+
+            {service.notes && (
+              <div className="bg-emerald-50 p-6 rounded-3xl border border-emerald-100">
+                <p className="text-[8px] font-black text-emerald-600 uppercase mb-2">Tamamlanma Notu</p>
+                <p className="text-sm font-bold text-emerald-800 leading-relaxed whitespace-pre-wrap">{service.notes}</p>
+              </div>
+            )}
+
+            {!isStaffView && (
+              <button 
+                onClick={() => setIsEditing(true)}
+                className="w-full py-4 border-2 border-slate-900 rounded-2xl text-slate-900 font-black uppercase tracking-widest hover:bg-slate-900 hover:text-white transition-all shadow-sm"
+              >
+                Bilgileri Düzenle / Teknisyen Değiştir
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+function ServiceManagement({ services, technicians, customers, initialFilter, selectedService, setSelectedService }: { services: ServiceRequest[], technicians: UserProfile[], customers: Customer[], initialFilter: string | null, selectedService: ServiceRequest | null, setSelectedService: (s: ServiceRequest | null) => void }) {
+  const [showAddForm, setShowAddForm] = useState(false);
+
+  const [searchPending, setSearchPending] = useState('');
+  const [searchActive, setSearchActive] = useState('');
+  const [searchCompleted, setSearchCompleted] = useState('');
+
+  const filterFn = (list: ServiceRequest[], term: string) => {
+    if (!term) return list;
+    const lower = term.toLowerCase();
+    return list.filter(s => s.customerName.toLowerCase().includes(lower) || (s.description && s.description.toLowerCase().includes(lower)));
+  };
+
+  const statusLabels: Record<string, { label: string, color: string, textColor: string }> = {
+    'PENDING': { label: 'Beklemede', color: 'bg-slate-500', textColor: 'text-slate-500' },
+    'ASSIGNED': { label: 'Atandı', color: 'bg-blue-500', textColor: 'text-blue-500' },
+    'IN_PROGRESS': { label: 'İşlemde', color: 'bg-amber-500', textColor: 'text-amber-500' },
+    'WAITING_PART': { label: 'Parça Bekliyor', color: 'bg-rose-500', textColor: 'text-rose-500' },
+    'REVISIT_REQUIRED': { label: 'Tekrar Gidilecek', color: 'bg-purple-500', textColor: 'text-purple-500' },
+    'COMPLETED': { label: 'Tamamlandı', color: 'bg-emerald-500', textColor: 'text-emerald-500' },
+    'INSTALLATION': { label: 'Kurulum', color: 'bg-sky-500', textColor: 'text-sky-500' }
+  };
+
+  const columns = [
+    { key: 'PENDING', label: 'BEKLEYEN İŞLER', filter: (s: ServiceRequest) => s.status === 'PENDING', searchTerm: searchPending, setSearch: setSearchPending, accent: 'border-slate-300' },
+    { key: 'ACTIVE', label: 'OPERASYON / SÜREÇTE', filter: (s: ServiceRequest) => ['ASSIGNED', 'IN_PROGRESS', 'WAITING_PART', 'REVISIT_REQUIRED'].includes(s.status), searchTerm: searchActive, setSearch: setSearchActive, accent: 'border-blue-400' },
+    { key: 'COMPLETED', label: 'TAMAMLANANLAR', filter: (s: ServiceRequest) => s.status === 'COMPLETED', searchTerm: searchCompleted, setSearch: setSearchCompleted, accent: 'border-emerald-400' }
+  ];
+
+  const serviceTypeLabels: Record<string, { label: string, color: string }> = {
+    'FAULT': { label: 'ARIZA', color: 'bg-rose-50 text-rose-600' },
+    'MAINTENANCE': { label: 'BAKIM', color: 'bg-emerald-50 text-emerald-600' },
+    'INSTALLATION': { label: 'KURULUM', color: 'bg-blue-50 text-blue-600' }
+  };
+
+  return (
+    <div className="h-[calc(100vh-140px)] flex flex-col gap-6 overflow-hidden">
+      {/* Header Area */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shrink-0 px-1">
+        <div>
+          <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Servis Operasyon Yönetimi</h2>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] mt-1">Gerçek Zamanlı İş Akışı ve Operasyonel Takip</p>
         </div>
         <button 
           onClick={() => setShowAddForm(true)}
-          className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-2xl font-bold text-sm shadow-xl shadow-blue-500/20 hover:bg-blue-700 transition-all uppercase tracking-widest"
+          className="flex items-center gap-3 px-8 py-3.5 bg-blue-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-2xl shadow-blue-500/30 group"
         >
-          <Plus className="w-5 h-5" />
-          Yeni İş Emri
+          <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform" /> Yeni Servis Kaydı
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {['PENDING', 'ASSIGNED', 'IN_PROGRESS', 'WAITING_PART', 'REVISIT_REQUIRED', 'COMPLETED'].map((status) => {
-          const filtered = services.filter(s => s.status === status);
-          if (initialFilter && initialFilter !== status && status !== 'WAITING_PART') {
-            // If we have an initial filter, we still show all boards but we could highlight.
-            // For simplicity, let's just keep the layout.
-          }
+      {/* Kanban Board Container */}
+      <div className="flex-1 flex flex-col lg:flex-row gap-6 min-h-0 overflow-hidden">
+        {columns.map((column) => {
+          const filtered = filterFn(services.filter(column.filter), column.searchTerm);
           
           return (
-            <div key={status} className={`p-4 rounded-3xl border transition-all ${initialFilter === status ? 'bg-blue-50/50 border-blue-200' : 'bg-slate-100/50 border-slate-200/50'} space-y-4`}>
-               <div className="flex justify-between items-center px-4">
-                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{statusLabels[status]?.label || status}</h4>
-                  <span className="bg-white px-2 py-0.5 rounded-lg text-[10px] font-black text-slate-600 shadow-sm">{filtered.length}</span>
+            <div 
+              key={column.key} 
+              className={`flex-1 flex flex-col bg-slate-50/50 rounded-[2.5rem] border-t-4 ${column.accent} shadow-sm min-h-0 overflow-hidden`}
+            >
+               {/* Column Header */}
+               <div className="p-6 pb-4 space-y-4 shrink-0 bg-white/80 backdrop-blur-sm border-b border-slate-200/50">
+                  <div className="flex justify-between items-center px-1">
+                    <div className="flex items-center gap-2">
+                       <div className={`w-2 h-2 rounded-full ${column.key === 'PENDING' ? 'bg-slate-400' : column.key === 'ACTIVE' ? 'bg-blue-500' : 'bg-emerald-500'} animate-pulse`} />
+                       <h4 className="text-[11px] font-black text-slate-800 uppercase tracking-widest">{column.label}</h4>
+                    </div>
+                    <span className="bg-slate-900 text-white px-2.5 py-1 rounded-full text-[10px] font-black">{filtered.length}</span>
+                  </div>
+                  <div className="relative group">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+                    <input 
+                      placeholder="Müşteri, cihaz veya detay ara..."
+                      className="w-full bg-white border border-slate-200/80 rounded-2xl pl-11 pr-4 py-3 text-xs font-bold focus:ring-4 focus:ring-blue-100/50 focus:border-blue-300 outline-none transition-all placeholder:text-slate-300 shadow-sm"
+                      value={column.searchTerm}
+                      onChange={e => column.setSearch(e.target.value)}
+                    />
+                  </div>
                </div>
-               <div className="space-y-3">
-                  {filtered.map(s => (
-                    <button 
-                      key={s.id} 
-                      onClick={() => { setSelectedService(s); setIsEditing(false); }}
-                      className="w-full text-left bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3 hover:shadow-md hover:border-blue-200 transition-all group"
-                    >
-                       <div className="flex justify-between items-start">
-                          <h5 className="text-xs font-black text-slate-900 uppercase leading-snug group-hover:text-blue-600 transition-colors">{s.customerName}</h5>
-                          <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded uppercase ${statusLabels[s.type]?.color || 'bg-slate-50'} text-slate-600`}>
-                            {statusLabels[s.type]?.label || s.type}
-                          </span>
-                       </div>
-                       <p className="text-[10px] font-bold text-slate-400 line-clamp-2">{s.description}</p>
-                       <div className="flex justify-between items-center pt-3 border-t border-slate-50">
-                          <div className="flex items-center gap-1.5 text-[9px] font-black text-slate-600 uppercase">
-                             <div className="w-5 h-5 bg-slate-900 rounded-full flex items-center justify-center text-white text-[7px]">
-                                {s.technicianName.charAt(0)}
-                             </div>
-                             <span className="truncate max-w-[80px]">{s.technicianName}</span>
-                          </div>
-                          <span className="text-[8px] font-bold text-slate-300">
-                            {s.createdAt && typeof s.createdAt.toDate === 'function' ? format(s.createdAt.toDate(), 'dd MMM', { locale: tr }) : ''}
-                          </span>
-                       </div>
-                    </button>
-                  ))}
+               
+               {/* Scrollable Column Content */}
+               <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar min-h-0 bg-slate-50/20">
+                  {filtered.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center py-12 opacity-30 grayscale ring-1 ring-slate-200 rounded-2xl mx-2">
+                      <p className="text-[9px] font-black uppercase tracking-[0.2em] text-center">İş Kaydı Yok</p>
+                    </div>
+                  ) : (
+                    filtered.map((s, index) => (
+                      <motion.div
+                        key={s.id}
+                        initial={{ opacity: 0, x: -5 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.02 }}
+                        onClick={() => setSelectedService(s)}
+                        className="group bg-white p-3 rounded-xl border border-slate-100 hover:border-blue-200 hover:shadow-md transition-all cursor-pointer flex items-center gap-3"
+                      >
+                         <div className={`w-1 self-stretch rounded-full ${statusLabels[s.status]?.color || 'bg-slate-100'} shrink-0`} />
+                         
+                         <div className="flex-1 min-w-0">
+                            <div className="flex justify-between items-center mb-0.5">
+                               <h5 className="text-[10px] font-black text-slate-900 uppercase truncate group-hover:text-blue-600 transition-colors">{s.customerName}</h5>
+                               <span className="text-[8px] font-bold text-slate-300 whitespace-nowrap ml-2">
+                                  {s.createdAt && typeof s.createdAt.toDate === 'function' ? format(s.createdAt.toDate(), 'dd/MM') : ''}
+                               </span>
+                            </div>
+                            <p className="text-[9px] font-bold text-slate-400 truncate leading-tight">
+                               <span className={`font-black mr-1 ${s.type === 'FAULT' ? 'text-rose-500' : 'text-emerald-500'}`}>
+                                 {s.type === 'FAULT' ? 'ARIZA' : 'BAKIM'}
+                               </span>
+                               {s.description}
+                            </p>
+                            {column.key !== 'PENDING' && (
+                               <div className="flex items-center gap-1.5 mt-1.5">
+                                  <div className="w-4 h-4 bg-slate-900 rounded-full flex items-center justify-center text-white text-[7px] font-black shrink-0">
+                                     {s.technicianName?.charAt(0)}
+                                  </div>
+                                  <span className="text-[8px] font-black text-slate-400 uppercase truncate">{s.technicianName}</span>
+                               </div>
+                            )}
+                         </div>
+                         
+                         <div className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <ArrowRight className="w-3 h-3 text-blue-400" />
+                         </div>
+                      </motion.div>
+                    ))
+                  )}
                </div>
             </div>
           );
@@ -1029,99 +1441,8 @@ function ServiceManagement({ services, technicians, customers, initialFilter }: 
       </div>
 
       {showAddForm && (
-        <div className="fixed inset-0 z-[60] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-6 text-slate-900">
-           <ServiceForm 
-            onClose={() => setShowAddForm(false)} 
-            customers={customers} 
-            technicians={technicians} 
-           />
-        </div>
-      )}
-
-      {selectedService && (
-        <div className="fixed inset-0 z-[70] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-6 text-slate-900">
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white w-full max-w-xl rounded-[2.5rem] shadow-2xl overflow-hidden">
-            <div className="bg-slate-900 p-8 text-white flex justify-between items-center">
-              <div>
-                <h3 className="text-xl font-black uppercase tracking-tight">{isEditing ? 'İş Emrini Düzenle' : 'İş Emri Detayları'}</h3>
-                {!isEditing && <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{selectedService.customerName}</p>}
-              </div>
-              <button onClick={() => setSelectedService(null)} className="p-2 text-slate-400 hover:text-white"><X className="w-8 h-8" /></button>
-            </div>
-            
-            <div className="p-8">
-              {isEditing ? (
-                <form onSubmit={handleUpdateService} className="space-y-6">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Açıklama</label>
-                    <textarea 
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold min-h-[100px]" 
-                      value={selectedService.description} 
-                      onChange={e => setSelectedService({...selectedService, description: e.target.value})}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Durum</label>
-                      <select 
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold" 
-                        value={selectedService.status} 
-                        onChange={e => setSelectedService({...selectedService, status: e.target.value as any})}
-                      >
-                        {['PENDING', 'ASSIGNED', 'IN_PROGRESS', 'WAITING_PART', 'REVISIT_REQUIRED', 'COMPLETED'].map(st => (
-                          <option key={st} value={st}>{statusLabels[st]?.label || st}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Teknisyen Ata</label>
-                      <select 
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold" 
-                        value={selectedService.technicianId} 
-                        onChange={e => setSelectedService({...selectedService, technicianId: e.target.value})}
-                      >
-                        {technicians.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                      </select>
-                    </div>
-                  </div>
-                  <button type="submit" className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 transition-all hover:bg-blue-700">Güncelle</button>
-                </form>
-              ) : (
-                <div className="space-y-8">
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="bg-slate-50 p-4 rounded-2xl">
-                      <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Hizmet Türü</p>
-                      <p className="text-sm font-black text-slate-900">{statusLabels[selectedService.type]?.label || selectedService.type}</p>
-                    </div>
-                    <div className="bg-slate-50 p-4 rounded-2xl">
-                      <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Mevcut Durum</p>
-                      <p className="text-sm font-black text-blue-600">{statusLabels[selectedService.status]?.label || selectedService.status}</p>
-                    </div>
-                    <div className="bg-slate-50 p-4 rounded-2xl">
-                       <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Atanan Personel</p>
-                       <p className="text-sm font-black text-slate-900">{selectedService.technicianName}</p>
-                    </div>
-                    <div className="bg-slate-50 p-4 rounded-2xl">
-                       <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Tarih</p>
-                       <p className="text-sm font-black text-slate-900">
-                        {selectedService.createdAt && typeof selectedService.createdAt.toDate === 'function' ? format(selectedService.createdAt.toDate(), 'PPP', { locale: tr }) : 'Belirtilmemiş'}
-                       </p>
-                    </div>
-                  </div>
-                  <div className="bg-slate-50 p-6 rounded-2xl">
-                    <p className="text-[8px] font-black text-slate-400 uppercase mb-3 px-1">Müşteri Açıklaması</p>
-                    <p className="text-sm font-medium text-slate-600 leading-relaxed italic">\"{selectedService.description}\"</p>
-                  </div>
-                  <button 
-                    onClick={() => setIsEditing(true)}
-                    className="w-full py-4 border-2 border-slate-900 rounded-2xl text-slate-900 font-black uppercase tracking-widest hover:bg-slate-900 hover:text-white transition-all shadow-sm"
-                  >
-                    Bilgileri Düzenle / Teknisyen Değiştir
-                  </button>
-                </div>
-              )}
-            </div>
-          </motion.div>
+        <div className="fixed inset-0 z-[80] bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4">
+          <ServiceForm onClose={() => setShowAddForm(false)} customers={customers} technicians={technicians} />
         </div>
       )}
     </div>
@@ -1137,21 +1458,29 @@ function ServiceForm({ onClose, customers, technicians }: { onClose: () => void,
     priority: 'NORMAL'
   });
 
+  const handleTypeChange = (type: ServiceType) => {
+    let description = formData.description;
+    if (type === 'MAINTENANCE') {
+      description = "Cihazların bakım ve temizliğinin yapılması, Yedek toner ve ödeme takibi";
+    }
+    setFormData({ ...formData, type, description });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const customer = customers.find(c => c.id === formData.customerId);
     const tech = technicians.find(t => t.id === formData.technicianId);
     
-    if (!customer || !tech) return;
+    if (!customer) return;
 
     try {
-      await addDoc(collection(db, 'services'), {
+      const serviceData = {
         ...formData,
         customerName: customer.name,
         customerAddress: customer.address,
         customerPhone: customer.phone,
-        technicianName: tech.name,
-        status: 'ASSIGNED',
+        technicianName: tech ? tech.name : 'Atanmadı',
+        status: tech ? 'ASSIGNED' : 'PENDING',
         createdAt: serverTimestamp(),
         photos: [],
         checklist: [
@@ -1159,21 +1488,25 @@ function ServiceForm({ onClose, customers, technicians }: { onClose: () => void,
           { id: '2', label: 'Arıza Tespiti Tamamlandı', completed: false },
           { id: '3', label: 'Müşteri Bilgilendirildi', completed: false }
         ]
-      });
+      };
+
+      await addDoc(collection(db, 'services'), serviceData);
       onClose();
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'services');
     }
   };
 
+  const isDescriptionRequired = formData.type !== 'VISIT' && formData.type !== 'DELIVERY';
+
   return (
     <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden">
       <div className="bg-slate-900 p-8 text-white flex justify-between items-center">
          <div>
             <h3 className="text-xl font-black uppercase tracking-tighter">İş Emri & Atama</h3>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Teknisyen görevlendiriliyor</p>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Yeni iş kaydı oluşturuluyor</p>
          </div>
-         <button onClick={onClose} className="p-2 text-slate-500 hover:text-white"><Plus className="w-8 h-8 rotate-45" /></button>
+         <button onClick={onClose} className="p-2 text-slate-500 hover:text-white"><X className="w-8 h-8" /></button>
       </div>
       <form onSubmit={handleSubmit} className="p-8 space-y-6">
         <div className="grid grid-cols-2 gap-6">
@@ -1186,7 +1519,7 @@ function ServiceForm({ onClose, customers, technicians }: { onClose: () => void,
            </div>
            <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Hizmet Türü</label>
-              <select className="w-full bg-slate-50 border-slate-200 rounded-xl px-4 py-3 text-sm font-bold" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value as ServiceType})}>
+              <select className="w-full bg-slate-50 border-slate-200 rounded-xl px-4 py-3 text-sm font-bold transition-all" value={formData.type} onChange={e => handleTypeChange(e.target.value as ServiceType)}>
                 <option value="FAULT">Ariza</option>
                 <option value="MAINTENANCE">Bakim</option>
                 <option value="VISIT">Ziyaret</option>
@@ -1194,18 +1527,25 @@ function ServiceForm({ onClose, customers, technicians }: { onClose: () => void,
               </select>
            </div>
            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Teknisyen Atama</label>
-              <select required className="w-full bg-slate-50 border-slate-200 rounded-xl px-4 py-3 text-sm font-bold" value={formData.technicianId} onChange={e => setFormData({...formData, technicianId: e.target.value})}>
-                <option value="">Lütfen Seçiniz</option>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Teknisyen Atama (Opsiyonel)</label>
+              <select className="w-full bg-slate-50 border-slate-200 rounded-xl px-4 py-3 text-sm font-bold" value={formData.technicianId} onChange={e => setFormData({...formData, technicianId: e.target.value})}>
+                <option value="">Atanmadı (Bekleyenlerde Gözükür)</option>
                 {technicians.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
            </div>
            <div className="col-span-2 space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Açıklama & Notlar</label>
-              <textarea required className="w-full bg-slate-50 border-slate-200 rounded-xl px-4 py-3 text-sm font-bold min-h-[100px]" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
+                Açıklama & Notlar {isDescriptionRequired ? '*' : '(Opsiyonel)'}
+              </label>
+              <textarea 
+                required={isDescriptionRequired} 
+                className="w-full bg-slate-50 border-slate-200 rounded-xl px-4 py-3 text-sm font-bold min-h-[100px]" 
+                value={formData.description} 
+                onChange={e => setFormData({...formData, description: e.target.value})} 
+              />
            </div>
         </div>
-        <button type="submit" className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest">Görevlendir</button>
+        <button type="submit" className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-blue-500/10">Kaydı Onayla</button>
       </form>
     </motion.div>
   );
@@ -1547,7 +1887,7 @@ function PaymentForm({ onClose, customers, editingPayment }: { onClose: () => vo
   );
 }
 
-function StaffManagement({ technicians, services }: { technicians: UserProfile[], services: ServiceRequest[] }) {
+function StaffManagement({ technicians, services, setSelectedService }: { technicians: UserProfile[], services: ServiceRequest[], setSelectedService: (s: ServiceRequest | null) => void }) {
   const [selectedStaff, setSelectedStaff] = useState<UserProfile | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newStaff, setNewStaff] = useState({ name: '', email: '', role: 'TECHNICIAN' as UserRole });
@@ -1583,9 +1923,12 @@ function StaffManagement({ technicians, services }: { technicians: UserProfile[]
   const handleDeleteStaff = async (id: string) => {
     if (!window.confirm('Bu personeli silmek istediğinize emin misiniz?')) return;
     try {
+      console.log('Deleting user:', id);
       await deleteDoc(doc(db, 'users', id));
       if (selectedStaff?.id === id) setSelectedStaff(null);
+      // Force update by local state mapping or trust the onSnapshot listener if it's correct
     } catch (error) {
+      console.error('Delete error:', error);
       handleFirestoreError(error, OperationType.DELETE, 'users');
     }
   };
@@ -1605,39 +1948,52 @@ function StaffManagement({ technicians, services }: { technicians: UserProfile[]
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {staffStats.map(t => (
-          <div 
-            key={t.id} 
-            className={`bg-white p-6 rounded-3xl border transition-all relative group ${selectedStaff?.id === t.id ? 'border-blue-600 ring-2 ring-blue-100 shadow-md' : 'border-slate-200 hover:shadow-sm'}`}
-          >
-             <button 
-                onClick={(e) => { e.stopPropagation(); handleDeleteStaff(t.id); }}
-                className="absolute top-4 right-4 p-2 text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
-             >
-                <Trash2 className="w-4 h-4" />
-             </button>
-             <div onClick={() => setSelectedStaff(t)} className="flex items-center gap-6 cursor-pointer">
-                <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center text-2xl font-black text-blue-600">
-                   {t.name.charAt(0)}
-                </div>
-                <div className="flex-1">
-                   <h4 className="font-black text-slate-900 uppercase tracking-tight">{t.name}</h4>
-                   <p className="text-[10px] font-bold text-slate-400 uppercase">{t.email}</p>
-                   <div className="flex gap-4 mt-2">
-                      <div className="text-center">
-                         <p className="text-[8px] font-black text-slate-400 uppercase">Aktif İş</p>
-                         <p className="text-sm font-black text-blue-600">{t.pending}</p>
+      <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Personel</th>
+                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">E-Posta</th>
+                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Aktif İş</th>
+                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Tamamlanan</th>
+                <th className="px-8 py-5"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {staffStats.map(t => (
+                <tr 
+                  key={t.id} 
+                  onClick={() => setSelectedStaff(t)}
+                  className="hover:bg-slate-50/50 transition-all group cursor-pointer"
+                >
+                  <td className="px-8 py-5">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center text-sm font-black text-blue-600 uppercase">
+                        {t.name.charAt(0)}
                       </div>
-                      <div className="text-center">
-                         <p className="text-[8px] font-black text-slate-400 uppercase">Biten İş</p>
-                         <p className="text-sm font-black text-emerald-600">{t.completed}</p>
-                      </div>
-                   </div>
-                </div>
-             </div>
-          </div>
-        ))}
+                      <span className="font-black text-slate-900 uppercase tracking-tight">{t.name}</span>
+                    </div>
+                  </td>
+                  <td className="px-8 py-5 text-sm font-bold text-slate-400">{t.email}</td>
+                  <td className="px-8 py-5 text-center font-black text-blue-600">{t.pending}</td>
+                  <td className="px-8 py-5 text-center font-black text-emerald-600">{t.completed}</td>
+                  <td className="px-8 py-5 text-right">
+                    <div className="flex items-center justify-end">
+                       <button 
+                        onClick={(e) => { e.stopPropagation(); handleDeleteStaff(t.id); }}
+                        className="p-3 text-slate-400 hover:text-red-500 transition-colors"
+                        title="Personeli Sil"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {showAddForm && (
@@ -1672,45 +2028,88 @@ function StaffManagement({ technicians, services }: { technicians: UserProfile[]
       )}
 
       {selectedStaff && (
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden"
-        >
-          <div className="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-            <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">
-              {selectedStaff.name} - İş Dağılımı
-            </h3>
-            <button onClick={() => setSelectedStaff(null)} className="text-[10px] font-bold text-slate-400 uppercase">Kapat</button>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-100">
-            {['PENDING/ASSIGNED', 'IN_PROGRESS/WAITING', 'COMPLETED'].map((group) => {
-              const statuses = group.split('/');
-              const filtered = services.filter(s => 
-                s.technicianId === selectedStaff.id && 
-                (statuses.includes(s.status) || (group === 'PENDING/ASSIGNED' && s.status === 'ASSIGNED'))
-              );
+        <div className="fixed inset-0 z-[75] bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-6 text-slate-900">
+           <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+              <div className="bg-slate-900 p-8 text-white flex justify-between items-center">
+                 <div>
+                    <h3 className="text-xl font-black uppercase tracking-tight">{selectedStaff.name}</h3>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Personel Detayları & Performans</p>
+                 </div>
+                 <button onClick={() => setSelectedStaff(null)} className="p-2 text-slate-400 hover:text-white"><X className="w-8 h-8" /></button>
+              </div>
               
-              return (
-                <div key={group} className="p-6 space-y-4">
-                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">{group}</h4>
-                  <div className="space-y-3">
-                    {filtered.length === 0 ? (
-                      <p className="text-xs font-bold text-slate-300 italic px-2">Kayıt bulunamadı</p>
-                    ) : (
-                      filtered.map(s => (
-                        <div key={s.id} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm space-y-2">
-                           <p className="text-xs font-black text-slate-900 uppercase leading-none">{s.customerName}</p>
-                           <p className="text-[10px] font-bold text-slate-400 line-clamp-1">{s.description}</p>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </motion.div>
+              <div className="flex-1 overflow-y-auto p-8 space-y-8">
+                 {/* Profil Düzenleme */}
+                 <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                       <label className="text-[10px] font-black text-slate-400 uppercase px-1">Personel Adı</label>
+                       <input 
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold" 
+                        value={selectedStaff.name} 
+                        onChange={async (e) => {
+                          const newName = e.target.value;
+                          setSelectedStaff({...selectedStaff, name: newName});
+                          await updateDoc(doc(db, 'users', selectedStaff.id), { name: newName });
+                        }} 
+                       />
+                    </div>
+                    <div className="space-y-1">
+                       <label className="text-[10px] font-black text-slate-400 uppercase px-1">E-Posta</label>
+                       <input 
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold" 
+                        value={selectedStaff.email} 
+                        onChange={async (e) => {
+                          const newEmail = e.target.value;
+                          setSelectedStaff({...selectedStaff, email: newEmail});
+                          await updateDoc(doc(db, 'users', selectedStaff.id), { email: newEmail });
+                        }} 
+                       />
+                    </div>
+                 </div>
+
+                 {/* İş Geçmişi (Son 10 İş) */}
+                 <div className="space-y-4">
+                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                       <Clock className="w-4 h-4" /> Son 10 İş Kaydı
+                    </h4>
+                    <div className="space-y-3">
+                       {services
+                        .filter(s => s.technicianId === selectedStaff.id)
+                        .sort((a, b) => {
+                          // Incomplete first, then by date
+                          if (a.status !== 'COMPLETED' && b.status === 'COMPLETED') return -1;
+                          if (a.status === 'COMPLETED' && b.status !== 'COMPLETED') return 1;
+                          const aDate = a.createdAt?.toDate?.()?.getTime() || 0;
+                          const bDate = b.createdAt?.toDate?.()?.getTime() || 0;
+                          return bDate - aDate;
+                        })
+                        .slice(0, 10)
+                        .map(s => (
+                          <div 
+                            key={s.id} 
+                            onClick={() => setSelectedService(s)}
+                            className={`p-4 rounded-2xl border cursor-pointer hover:border-slate-400 transition-all ${s.status === 'COMPLETED' ? 'bg-emerald-50/50 border-emerald-100' : 'bg-red-50/50 border-red-100'} flex justify-between items-center`}
+                          >
+                             <div className="space-y-1">
+                                <p className={`text-xs font-black uppercase ${s.status === 'COMPLETED' ? 'text-emerald-700' : 'text-red-700'}`}>{s.customerName}</p>
+                                <p className="text-[10px] font-bold text-slate-500 line-clamp-1">{s.description}</p>
+                             </div>
+                             <div className="text-right shrink-0">
+                                <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-md ${s.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>
+                                   {s.status === 'COMPLETED' ? 'Tamamlandı' : 'Beklemede'}
+                                </span>
+                                <p className="text-[8px] font-bold text-slate-400 mt-1">{s.createdAt?.toDate?.() ? format(s.createdAt.toDate(), 'dd MMM') : ''}</p>
+                             </div>
+                          </div>
+                        ))}
+                       {services.filter(s => s.technicianId === selectedStaff.id).length === 0 && (
+                          <p className="text-xs font-bold text-slate-300 italic text-center py-8">Henüz iş kaydı bulunmuyor.</p>
+                       )}
+                    </div>
+                 </div>
+              </div>
+           </motion.div>
+        </div>
       )}
     </div>
   );
