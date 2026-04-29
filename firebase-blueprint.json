@@ -1,0 +1,80 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "App users with roles (admin or technician).",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["ADMIN", "TECHNICIAN"] },
+        "status": { "type": "string", "enum": ["ACTIVE", "INACTIVE"] }
+      }
+    },
+    "Customer": {
+      "title": "Customer",
+      "description": "Photocopy machine owners with multiple devices.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "address": { "type": "string" },
+        "phone": { "type": "string" },
+        "maintenanceIntervalMonths": { "type": "number" },
+        "lastVisitDate": { "type": "string", "format": "date-time" },
+        "balance": { "type": "number", "default": 0 },
+        "devices": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "model": { "type": "string" },
+              "counter": { "type": "number" },
+              "spareTonerCount": { "type": "number" }
+            }
+          }
+        }
+      }
+    },
+    "Service": {
+      "title": "Service Job",
+      "description": "Fault repairs, maintenance, or visits.",
+      "type": "object",
+      "properties": {
+        "customerId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "type": { "type": "string", "enum": ["FAULT", "MAINTENANCE", "VISIT", "DELIVERY", "PAYMENT_COLLECTION"] },
+        "status": { "type": "string", "enum": ["PENDING", "ASSIGNED", "IN_PROGRESS", "COMPLETED", "WAITING_PART", "REVISIT_REQUIRED"] },
+        "technicianId": { "type": "string" },
+        "technicianName": { "type": "string" },
+        "description": { "type": "string" },
+        "counterReading": { "type": "number" },
+        "tonerCountReported": { "type": "number" },
+        "paymentCollected": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "dueDate": { "type": "string", "format": "date-time" }
+      }
+    },
+    "PaymentFollowUp": {
+      "title": "Payment Notification",
+      "description": "Tracking customer payments with history.",
+      "type": "object",
+      "properties": {
+        "customerId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "totalAmount": { "type": "number" },
+        "paidAmount": { "type": "number" },
+        "remainingAmount": { "type": "number" },
+        "dueDate": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["PENDING", "PARTIAL", "PAID"] },
+        "note": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": { "schema": "User", "description": "User roles and profile" },
+    "/customers/{customerId}": { "schema": "Customer", "description": "Customer database" },
+    "/services/{serviceId}": { "schema": "Service", "description": "Main task flow" },
+    "/payments/{paymentId}": { "schema": "PaymentFollowUp", "description": "Financial tracking" }
+  }
+}

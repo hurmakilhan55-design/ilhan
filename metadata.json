@@ -1,0 +1,10 @@
+{
+  "name": "Hürmak Mobil - Saha Servis Yönetimi",
+  "description": "Hürmak teknik servis ekipleri için dijital saha yönetim uygulaması. Fotoğraf ekleme, dijital imza, dinamik formlar ve konum takibi özellikleri içerir.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation",
+    "microphone"
+  ],
+  "majorCapabilities": []
+}
