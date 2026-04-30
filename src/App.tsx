@@ -437,8 +437,8 @@ function ManagerView({
       {/* Sidebar */}
       <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col hidden lg:flex">
         <div className="p-6 border-b border-slate-800 flex flex-col items-center gap-4">
-          <img src="https://ais-pre-esewrng7ioiseht5ktotxi-618845641780.europe-west2.run.app/input_file_0.png" alt="Hürmak" className="w-32 h-auto" />
-          <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] -mt-2">YÖNETİM PANELİ</h2>
+          <img src="/input_file_0.png" alt="Hürmak Logo" className="w-40 h-auto object-contain" />
+          <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">YÖNETİM SİSTEMİ</h2>
         </div>
         
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
@@ -473,9 +473,9 @@ function ManagerView({
 
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto bg-slate-50 relative">
-        <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-slate-200 px-8 py-4 flex justify-between items-center shadow-sm lg:hidden">
+        <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 py-4 flex justify-between items-center shadow-sm lg:hidden">
           <div className="flex items-center gap-4">
-            <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center font-bold text-[8px] italic text-white">Hürmak</div>
+            <img src="/input_file_0.png" alt="Hürmak Logo" className="h-8 w-auto object-contain" />
             <h2 className="text-xs font-black text-slate-900 uppercase tracking-tight">{tab}</h2>
           </div>
           <button onClick={logOut} className="p-2 text-slate-400">
@@ -2352,13 +2352,13 @@ function AuthView() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6 text-slate-900">
       <div className="w-full max-w-sm text-center space-y-12">
-        <div className="space-y-4">
-          <div className="mx-auto w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center shadow-xl shadow-slate-200">
-             <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center font-bold text-xs italic text-white leading-none">Hürmak</div>
+        <div className="space-y-6">
+          <div className="flex justify-center">
+             <img src="/input_file_0.png" alt="Hürmak Logo" className="w-48 h-auto object-contain drop-shadow-sm" />
           </div>
           <div className="space-y-2">
-            <h1 className="text-3xl font-black text-slate-900 tracking-tighter uppercase">Hürmak MOBİL</h1>
-            <p className="text-sm font-medium text-slate-500 uppercase tracking-widest">Saha Servis Yönetimi</p>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tighter uppercase">Saha Yönetim Sistemi</h1>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">Dijital Servis Çözümleri</p>
           </div>
         </div>
         
