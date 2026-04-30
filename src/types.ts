@@ -13,6 +13,7 @@ export type UserRole = 'ADMIN' | 'TECHNICIAN';
 export interface Device {
   model: string;
   brand: string;
+  serialNumber?: string;
   counter: number;
   spareTonerCount: number;
 }

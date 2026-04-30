@@ -194,6 +194,8 @@ export default function App() {
       
       // 1. Maintenance Jobs
       for (const customer of customers) {
+        if (customer.maintenanceIntervalMonths <= 0) continue; // Skip if no contract
+        
         const lastDate = (customer.lastVisitDate && typeof customer.lastVisitDate.toDate === 'function') ? customer.lastVisitDate.toDate() : new Date(0);
         const nextDate = addMonths(lastDate, customer.maintenanceIntervalMonths);
         
@@ -570,6 +572,7 @@ function Dashboard({ services, technicians, customers, payments, onStatClick, se
 
   const maintenanceDueCount = useMemo(() => {
     return customers.filter(c => {
+      if (c.maintenanceIntervalMonths <= 0) return false; // Skip if no contract
       const lastVisit = (c.lastVisitDate && typeof c.lastVisitDate.toDate === 'function') ? c.lastVisitDate.toDate() : new Date(0);
       const nextDate = addMonths(lastVisit, c.maintenanceIntervalMonths);
       return isBefore(nextDate, new Date());
@@ -819,7 +822,7 @@ function CustomerManagement({ customers, services, setSelectedService }: { custo
     const currentDevices = selectedCustomer.devices || [];
     setSelectedCustomer({
       ...selectedCustomer,
-      devices: [...currentDevices, { model: '', brand: '', counter: 0, spareTonerCount: 0 }]
+      devices: [...currentDevices, { model: '', brand: '', serialNumber: '', counter: 0, spareTonerCount: 0 }]
     });
   };
 
@@ -893,7 +896,7 @@ function CustomerManagement({ customers, services, setSelectedService }: { custo
                     <span className="text-sm font-bold text-slate-600">{c.phone}</span>
                   </td>
                   <td className="px-8 py-4 text-center text-sm font-black text-slate-900">
-                    {c.maintenanceIntervalMonths} Ay
+                    {c.maintenanceIntervalMonths > 0 ? `${c.maintenanceIntervalMonths} Ay` : 'Yok'}
                   </td>
                   <td className="px-8 py-4 text-right">
                     <span className={`text-sm font-black ${c.balance < 0 ? 'text-emerald-600' : 'text-red-500'}`}>
@@ -943,7 +946,16 @@ function CustomerManagement({ customers, services, setSelectedService }: { custo
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Bakım Aralığı (Ay)</label>
-                      <input type="number" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold" placeholder="Bakım Aralığı" value={selectedCustomer.maintenanceIntervalMonths} onChange={e => setSelectedCustomer({...selectedCustomer, maintenanceIntervalMonths: parseInt(e.target.value)})} />
+                      <select 
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold"
+                        value={selectedCustomer.maintenanceIntervalMonths}
+                        onChange={e => setSelectedCustomer({...selectedCustomer, maintenanceIntervalMonths: parseInt(e.target.value)})}
+                      >
+                        <option value={0}>Sözleşmesi Yok</option>
+                        {[1, 2, 3, 4, 6, 12].map(m => (
+                          <option key={m} value={m}>{m} Ay</option>
+                        ))}
+                      </select>
                     </div>
                     <div className="col-span-2 space-y-1">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Adres Bilgisi</label>
@@ -977,6 +989,10 @@ function CustomerManagement({ customers, services, setSelectedService }: { custo
                                 <input className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold" value={dev.model} onChange={e => updateDevice(idx, 'model', e.target.value)} />
                               </div>
                               <div className="space-y-1">
+                                <label className="text-[8px] font-black text-slate-400 uppercase">Seri Numarası</label>
+                                <input className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold" value={dev.serialNumber || ''} onChange={e => updateDevice(idx, 'serialNumber', e.target.value)} />
+                              </div>
+                              <div className="space-y-1">
                                 <label className="text-[8px] font-black text-slate-400 uppercase">Sayacı</label>
                                 <input type="number" className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold" value={dev.counter} onChange={e => updateDevice(idx, 'counter', parseInt(e.target.value))} />
                               </div>
@@ -1005,7 +1021,7 @@ function CustomerManagement({ customers, services, setSelectedService }: { custo
                     </div>
                     <div className="bg-slate-50 p-4 rounded-2xl">
                       <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Bakım Aralığı</p>
-                      <p className="text-sm font-black text-slate-900">{selectedCustomer.maintenanceIntervalMonths} Ay</p>
+                      <p className="text-sm font-black text-slate-900">{selectedCustomer.maintenanceIntervalMonths > 0 ? `${selectedCustomer.maintenanceIntervalMonths} Ay` : 'Sözleşmesi Yok'}</p>
                     </div>
                     <div className="bg-slate-50 p-4 rounded-2xl col-span-2">
                        <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Cari Bakiye</p>
@@ -1029,7 +1045,8 @@ function CustomerManagement({ customers, services, setSelectedService }: { custo
                         <div key={idx} className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-4">
                            <Printer className="w-5 h-5 text-slate-400" />
                            <div>
-                              <p className="text-xs font-black text-slate-900 uppercase">{dev.model}</p>
+                              <p className="text-xs font-black text-slate-900 uppercase">{dev.brand} {dev.model}</p>
+                              {dev.serialNumber && <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest mb-0.5">S/N: {dev.serialNumber}</p>}
                               <p className="text-[10px] font-bold text-slate-400">{dev.counter?.toLocaleString()} Sayaç</p>
                            </div>
                         </div>
@@ -1081,13 +1098,13 @@ function CustomerForm({ onClose }: { onClose: () => void }) {
     phone: '',
     maintenanceIntervalMonths: 1,
     balance: 0,
-    devices: [{ model: '', brand: '', counter: 0, spareTonerCount: 0 }]
+    devices: [{ model: '', brand: '', serialNumber: '', counter: 0, spareTonerCount: 0 }]
   });
 
   const addDevice = () => {
     setFormData({
       ...formData,
-      devices: [...formData.devices, { model: '', brand: '', counter: 0, spareTonerCount: 0 }]
+      devices: [...formData.devices, { model: '', brand: '', serialNumber: '', counter: 0, spareTonerCount: 0 }]
     });
   };
 
@@ -1146,6 +1163,7 @@ function CustomerForm({ onClose }: { onClose: () => void }) {
            <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Bakım Periyodu (Ay)</label>
               <select className="w-full bg-slate-50 border-slate-200 rounded-xl px-4 py-3 text-sm font-bold" value={formData.maintenanceIntervalMonths} onChange={e => setFormData({...formData, maintenanceIntervalMonths: Number(e.target.value)})}>
+                <option value={0}>Sözleşmesi Yok</option>
                 {[1, 2, 3, 4, 6, 12].map(m => <option key={m} value={m}>{m} Ay</option>)}
               </select>
            </div>
@@ -1171,17 +1189,21 @@ function CustomerForm({ onClose }: { onClose: () => void }) {
                 {formData.devices.length > 1 && (
                   <button type="button" onClick={() => removeDevice(idx)} className="absolute top-4 right-4 text-[9px] font-black text-red-500 uppercase">Sıfırla</button>
                 )}
-                <div className="grid grid-cols-4 gap-4">
-                  <div className="col-span-2 lg:col-span-1 space-y-1">
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+                  <div className="space-y-1">
                     <label className="text-[9px] font-bold text-slate-400 uppercase">Marka</label>
                     <input required placeholder="Örn: Kyocera" className="w-full bg-white border-slate-200 rounded-lg px-3 py-2 text-xs font-bold" value={dev.brand} onChange={e => updateDevice(idx, 'brand', e.target.value)} />
                   </div>
-                  <div className="col-span-2 lg:col-span-1 space-y-1">
+                  <div className="space-y-1">
                     <label className="text-[9px] font-bold text-slate-400 uppercase">Model</label>
                     <input required className="w-full bg-white border-slate-200 rounded-lg px-3 py-2 text-xs font-bold" value={dev.model} onChange={e => updateDevice(idx, 'model', e.target.value)} />
                   </div>
-                  <div className="col-span-2 lg:col-span-1 space-y-1">
-                    <label className="text-[9px] font-bold text-slate-400 uppercase">Güncel Sayaç</label>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-slate-400 uppercase">Seri No</label>
+                    <input className="w-full bg-white border-slate-200 rounded-lg px-3 py-2 text-xs font-bold" placeholder="S/N" value={dev.serialNumber || ''} onChange={e => updateDevice(idx, 'serialNumber', e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-slate-400 uppercase">Sayaç</label>
                     <input type="number" className="w-full bg-white border-slate-200 rounded-lg px-3 py-2 text-xs font-bold" value={dev.counter} onChange={e => updateDevice(idx, 'counter', Number(e.target.value))} />
                   </div>
                   <div className="space-y-1">
@@ -1571,8 +1593,36 @@ function ServiceForm({ onClose, customers, technicians }: { onClose: () => void,
     type: 'FAULT' as ServiceType,
     technicianId: '',
     description: '',
-    priority: 'NORMAL'
+    priority: 'NORMAL',
+    deviceInfo: ''
   });
+
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [showCustomerResults, setShowCustomerResults] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+
+  const filteredCustomers = useMemo(() => {
+    if (!customerSearch) return [];
+    return customers.filter(c => 
+      c.name.toLowerCase().includes(customerSearch.toLowerCase())
+    ).slice(0, 5);
+  }, [customers, customerSearch]);
+
+  const handleSelectCustomer = (customer: Customer) => {
+    setSelectedCustomer(customer);
+    setCustomerSearch(customer.name);
+    setShowCustomerResults(false);
+    
+    const deviceName = customer.devices && customer.devices.length === 1 
+      ? `${customer.devices[0].brand} ${customer.devices[0].model}`
+      : '';
+      
+    setFormData({ 
+      ...formData, 
+      customerId: customer.id,
+      deviceInfo: deviceName
+    });
+  };
 
   const handleTypeChange = (type: ServiceType) => {
     let description = formData.description;
@@ -1584,7 +1634,7 @@ function ServiceForm({ onClose, customers, technicians }: { onClose: () => void,
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const customer = customers.find(c => c.id === formData.customerId);
+    const customer = selectedCustomer || customers.find(c => c.id === formData.customerId);
     const tech = technicians.find(t => t.id === formData.technicianId);
     
     if (!customer) return;
@@ -1626,13 +1676,114 @@ function ServiceForm({ onClose, customers, technicians }: { onClose: () => void,
       </div>
       <form onSubmit={handleSubmit} className="p-8 space-y-6">
         <div className="grid grid-cols-2 gap-6">
-           <div className="col-span-2 space-y-2">
+           <div className="col-span-2 space-y-2 relative">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Müşteri Seçimi</label>
-              <select required className="w-full bg-slate-50 border-slate-200 rounded-xl px-4 py-3 text-sm font-bold" value={formData.customerId} onChange={e => setFormData({...formData, customerId: e.target.value})}>
-                <option value="">Lütfen Seçiniz</option>
-                {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
+              <div className="relative group">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input 
+                  required
+                  autoComplete="off"
+                  placeholder="Müşteri adını yazın..."
+                  className="w-full bg-slate-50 border-slate-200 rounded-xl pl-11 pr-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-900"
+                  value={customerSearch}
+                  onChange={e => {
+                    setCustomerSearch(e.target.value);
+                    setShowCustomerResults(true);
+                  }}
+                  onFocus={() => setShowCustomerResults(true)}
+                />
+              </div>
+
+              <AnimatePresence>
+                {showCustomerResults && filteredCustomers.length > 0 && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="absolute z-50 left-0 right-0 top-full mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden"
+                  >
+                    {filteredCustomers.map(c => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => handleSelectCustomer(c)}
+                        className="w-full px-6 py-4 text-left hover:bg-blue-50 transition-colors flex items-center justify-between group"
+                      >
+                        <div>
+                          <p className="text-sm font-black text-slate-900 group-hover:text-blue-600 transition-colors uppercase">{c.name}</p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase truncate max-w-[250px]">{c.address}</p>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-blue-500 transition-colors" />
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {selectedCustomer && (
+                <div className="mt-2 p-3 bg-blue-50/50 rounded-xl border border-blue-100 flex items-center justify-between animate-in fade-in slide-in-from-top-1">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600">
+                      <Users className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black text-blue-600 uppercase">Seçilen Müşteri</p>
+                      <p className="text-xs font-bold text-slate-700">{selectedCustomer.name}</p>
+                    </div>
+                  </div>
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      setSelectedCustomer(null);
+                      setFormData({...formData, customerId: '', deviceInfo: ''});
+                      setCustomerSearch('');
+                    }}
+                    className="p-1 px-2 text-[9px] font-black uppercase text-rose-500 hover:bg-rose-50 rounded-lg transition-colors border border-rose-100"
+                  >
+                    Temizle
+                  </button>
+                </div>
+              )}
            </div>
+
+           {selectedCustomer && (
+             <div className="col-span-2 space-y-2 animate-in fade-in slide-in-from-top-2">
+               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Cihaz Seçimi</label>
+               {selectedCustomer.devices && selectedCustomer.devices.length > 0 ? (
+                 selectedCustomer.devices.length === 1 ? (
+                   <div className="flex items-center gap-3 p-4 bg-slate-50 border border-slate-100 rounded-xl">
+                      <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-blue-500 shadow-sm">
+                        <Printer className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Kayıtlı Cihaz</p>
+                        <p className="text-sm font-black text-slate-900">{selectedCustomer.devices[0].brand} {selectedCustomer.devices[0].model}</p>
+                      </div>
+                   </div>
+                 ) : (
+                   <select 
+                     required 
+                     className="w-full bg-slate-50 border-slate-200 rounded-xl px-4 py-3 text-sm font-bold" 
+                     value={formData.deviceInfo} 
+                     onChange={e => setFormData({...formData, deviceInfo: e.target.value})}
+                   >
+                     <option value="">Lütfen Cihaz Seçiniz</option>
+                     {selectedCustomer.devices.map((d, i) => (
+                       <option key={i} value={`${d.brand} ${d.model}`}>{d.brand} {d.model}</option>
+                     ))}
+                   </select>
+                 )
+               ) : (
+                 <input 
+                   placeholder="Cihaz modelini yazın..."
+                   className="w-full bg-slate-50 border-slate-200 rounded-xl px-4 py-3 text-sm font-bold"
+                   value={formData.deviceInfo}
+                   onChange={e => setFormData({...formData, deviceInfo: e.target.value})}
+                 />
+               )}
+             </div>
+           )}
+
            <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Hizmet Türü</label>
               <select className="w-full bg-slate-50 border-slate-200 rounded-xl px-4 py-3 text-sm font-bold transition-all" value={formData.type} onChange={e => handleTypeChange(e.target.value as ServiceType)}>
@@ -1671,8 +1822,10 @@ function MaintenanceAgreements({ customers, services }: { customers: Customer[],
   const [selectedCustomerReports, setSelectedCustomerReports] = useState<{name: string, reports: ServiceRequest[], nextDate: Date} | null>(null);
 
   const maintenanceList = useMemo(() => {
-    return customers.map(c => {
-      const lastService = services.filter(s => s.customerId === c.id && s.type === 'MAINTENANCE' && s.status === 'COMPLETED')[0];
+    return customers
+      .filter(c => c.maintenanceIntervalMonths > 0)
+      .map(c => {
+        const lastService = services.filter(s => s.customerId === c.id && s.type === 'MAINTENANCE' && s.status === 'COMPLETED')[0];
       const lastVisit = (c.lastVisitDate && typeof c.lastVisitDate.toDate === 'function') ? c.lastVisitDate.toDate() : (lastService?.completedAt && typeof lastService.completedAt.toDate === 'function' ? lastService.completedAt.toDate() : new Date(0));
       const nextDate = addMonths(lastVisit, c.maintenanceIntervalMonths);
       const isDue = isBefore(nextDate, new Date());
