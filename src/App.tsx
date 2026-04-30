@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { 
   collection, 
   query, 
@@ -43,7 +43,9 @@ import {
   Edit2,
   Trash2,
   AlertCircle,
-  ArrowRight
+  ArrowRight,
+  Check,
+  ShieldCheck
 } from 'lucide-react';
 import { auth, signInWithGoogle, logOut, db } from './lib/firebase';
 import { 
@@ -435,10 +437,20 @@ function ManagerView({
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col hidden lg:flex">
-        <div className="p-6 border-b border-slate-800 flex flex-col items-center gap-4">
-          <img src="/input_file_0.png" alt="Hürmak Logo" className="w-40 h-auto object-contain" />
-          <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">YÖNETİM SİSTEMİ</h2>
+      <aside className="w-72 glass-dark text-slate-300 flex flex-col hidden lg:flex border-r border-slate-800/50">
+        <div className="p-8 border-b border-slate-800/50 flex flex-col items-center gap-6">
+          <div className="relative group">
+            <div className="absolute -inset-4 bg-blue-500/20 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
+            <img 
+              src="/input_file_0.png" 
+              alt="Hürmak" 
+              className="w-44 h-auto object-contain relative z-10"
+            />
+          </div>
+          <div className="text-center space-y-1">
+            <h2 className="text-[11px] font-black text-blue-400 uppercase tracking-[0.4em]">Yönetim Sistemi</h2>
+            <div className="h-1 w-12 bg-blue-500/30 mx-auto rounded-full" />
+          </div>
         </div>
         
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
@@ -472,11 +484,12 @@ function ManagerView({
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto bg-slate-50 relative">
-        <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 py-4 flex justify-between items-center shadow-sm lg:hidden">
+      <main className="flex-1 overflow-y-auto mesh-bg relative">
+        <header className="sticky top-0 z-50 glass border-b border-slate-200/50 px-8 py-5 flex justify-between items-center lg:hidden">
           <div className="flex items-center gap-4">
-            <img src="/input_file_0.png" alt="Hürmak Logo" className="h-8 w-auto object-contain" />
-            <h2 className="text-xs font-black text-slate-900 uppercase tracking-tight">{tab}</h2>
+            <img src="/input_file_0.png" alt="Hürmak" className="h-10 w-auto object-contain" />
+            <div className="h-4 w-[1px] bg-slate-200 mx-2" />
+            <h2 className="text-xs font-black text-slate-900 uppercase tracking-widest">{tab}</h2>
           </div>
           <button onClick={logOut} className="p-2 text-slate-400">
             <LogOut className="w-5 h-5" />
@@ -492,7 +505,7 @@ function ManagerView({
                exit={{ opacity: 0, y: -10 }}
                transition={{ duration: 0.2 }}
              >
-               {tab === 'DASHBOARD' && <Dashboard services={services} technicians={technicians} customers={customers} payments={payments} onStatClick={onStatClick} />}
+               {tab === 'DASHBOARD' && <Dashboard services={services} technicians={technicians} customers={customers} payments={payments} onStatClick={onStatClick} setSelectedService={setSelectedService} />}
                {tab === 'CUSTOMERS' && <CustomerManagement customers={customers} services={services} setSelectedService={setSelectedService} />}
                {tab === 'DISPATCH' && <ServiceManagement services={services} technicians={technicians} customers={customers} initialFilter={selectedFilter} selectedService={selectedService} setSelectedService={setSelectedService} />}
                {tab === 'MAINTENANCE' && <MaintenanceAgreements customers={customers} services={services} />}
@@ -505,7 +518,13 @@ function ManagerView({
         {/* Global Service Detail Modal */}
         {selectedService && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 lg:p-12 overflow-hidden">
-            <div className="absolute inset-0 bg-slate-900/40" onClick={() => setSelectedService(null)} />
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm" 
+              onClick={() => setSelectedService(null)} 
+            />
             <ServiceDetailModal 
               service={selectedService} 
               onClose={() => setSelectedService(null)} 
@@ -537,7 +556,7 @@ function ManagerView({
   );
 }
 
-function Dashboard({ services, technicians, customers, payments, onStatClick }: { services: ServiceRequest[], technicians: UserProfile[], customers: Customer[], payments: PaymentFollowUp[], onStatClick: (tab: string, filter?: string) => void }) {
+function Dashboard({ services, technicians, customers, payments, onStatClick, setSelectedService }: { services: ServiceRequest[], technicians: UserProfile[], customers: Customer[], payments: PaymentFollowUp[], onStatClick: (tab: ManagerTab, filter?: string) => void, setSelectedService: (s: ServiceRequest) => void }) {
   const stats = useMemo(() => {
     return {
       total: services.length,
@@ -585,11 +604,11 @@ function Dashboard({ services, technicians, customers, payments, onStatClick }: 
     const pendingRevenue = payments.reduce((acc, curr) => acc + (Number(curr.remainingAmount) || 0), 0);
     
     return [
-      { label: 'Aktif Arıza', value: stats.pending + stats.inProgress, icon: Wrench, color: 'text-blue-600', bg: 'bg-blue-50', tab: 'DISPATCH', filter: 'ACTIVE' },
-      { label: 'Parça Bekleyen', value: stats.waitingPart, icon: Package, color: 'text-amber-600', bg: 'bg-amber-50', tab: 'DISPATCH', filter: 'WAITING_PART' },
-      { label: 'Bakım Bekleyen', value: maintenanceDueCount, icon: Clock, color: 'text-rose-600', bg: 'bg-rose-50', tab: 'MAINTENANCE' },
-      { label: 'Tahsil Edilen', value: `₺${(totalRevenue || 0).toLocaleString('tr-TR')}`, icon: CreditCard, color: 'text-emerald-600', bg: 'bg-emerald-50', tab: 'PAYMENTS' },
-      { label: 'Bekleyen Tutar', value: `₺${(pendingRevenue || 0).toLocaleString('tr-TR')}`, icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50', tab: 'PAYMENTS' }
+      { label: 'Aktif Arıza', value: stats.pending + stats.inProgress, icon: Wrench, color: 'text-blue-600', bg: 'bg-blue-50', tab: 'DISPATCH' as ManagerTab, filter: 'ACTIVE' },
+      { label: 'Parça Bekleyen', value: stats.waitingPart, icon: Package, color: 'text-amber-600', bg: 'bg-amber-50', tab: 'DISPATCH' as ManagerTab, filter: 'WAITING_PART' },
+      { label: 'Bakım Bekleyen', value: maintenanceDueCount, icon: Clock, color: 'text-rose-600', bg: 'bg-rose-50', tab: 'MAINTENANCE' as ManagerTab },
+      { label: 'Tahsil Edilen', value: `₺${(totalRevenue || 0).toLocaleString('tr-TR')}`, icon: CreditCard, color: 'text-emerald-600', bg: 'bg-emerald-50', tab: 'PAYMENTS' as ManagerTab },
+      { label: 'Bekleyen Tutar', value: `₺${(pendingRevenue || 0).toLocaleString('tr-TR')}`, icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50', tab: 'PAYMENTS' as ManagerTab }
     ];
   }, [stats, payments, technicians, maintenanceDueCount]);
 
@@ -614,22 +633,44 @@ function Dashboard({ services, technicians, customers, payments, onStatClick }: 
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
-           <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Haftalık Performans</h3>
-           <div className="h-80 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} />
-                  <Tooltip 
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                    itemStyle={{ fontSize: '12px', fontWeight: 600 }}
-                  />
-                  <Bar dataKey="created" name="Açılan İşler" fill="#e2e8f0" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="completed" name="Biten İşler" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+        <div className="lg:col-span-2 glass rounded-[2.5rem] p-8 space-y-6">
+           <div className="flex justify-between items-center">
+              <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-[0.2em] flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                Bekleyen İş Emirleri
+              </h3>
+              <button 
+                onClick={() => onStatClick('DISPATCH', 'PENDING')}
+                className="text-[9px] font-black text-blue-600 uppercase tracking-widest hover:underline"
+              >
+                Tümünü Yönet
+              </button>
+           </div>
+           
+           <div className="space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
+              {services.filter(s => s.status === 'PENDING').length === 0 ? (
+                <div className="h-40 flex flex-col items-center justify-center text-slate-400 opacity-50 grayscale">
+                  <ClipboardCheck className="w-8 h-8 mb-2" />
+                  <p className="text-[10px] font-black uppercase tracking-widest">Bekleyen İş Yok</p>
+                </div>
+              ) : (
+                services.filter(s => s.status === 'PENDING').map(s => (
+                  <div key={s.id} className="flex items-center gap-4 p-4 rounded-2xl bg-white border border-slate-100 hover:border-blue-200 hover:shadow-lg transition-all group cursor-pointer" onClick={() => setSelectedService(s)}>
+                    <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
+                      <Clock className="w-6 h-6" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-sm font-black text-slate-900 uppercase truncate">{s.customerName}</h4>
+                      <p className="text-[11px] font-bold text-slate-500 truncate mt-0.5">{s.description}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-[10px] font-black text-slate-900 uppercase">{s.type === 'FAULT' ? 'ARIZA' : 'BAKIM'}</p>
+                      <p className="text-[9px] font-bold text-slate-400 mt-1 uppercase">{s.createdAt && typeof s.createdAt.toDate === 'function' ? format(s.createdAt.toDate(), 'dd MMM', { locale: tr }) : ''}</p>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-blue-500 transition-colors" />
+                  </div>
+                ))
+              )}
            </div>
         </div>
 
@@ -1163,6 +1204,12 @@ function ServiceDetailModal({ service, onClose, isStaffView, technicians }: { se
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({ ...service });
 
+  // Sync data when service changes
+  useEffect(() => {
+    setEditData({ ...service });
+    setIsEditing(false); // Reset editing state on service change
+  }, [service]);
+
   const statusLabels: Record<string, { label: string, color: string, textColor: string }> = {
     'PENDING': { label: 'Beklemede', color: 'bg-slate-500', textColor: 'text-slate-500' },
     'ASSIGNED': { label: 'Atandı', color: 'bg-blue-500', textColor: 'text-blue-500' },
@@ -1182,30 +1229,39 @@ function ServiceDetailModal({ service, onClose, isStaffView, technicians }: { se
         technicianName: tech ? tech.name : (editData.technicianId ? 'Bilinmiyor' : 'Atanmadı'),
         status: editData.technicianId && editData.status === 'PENDING' ? 'ASSIGNED' : editData.status
       });
-      onClose();
+      setIsEditing(false); // Switch back to view mode after update
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'services');
     }
   };
 
   return (
-    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden pointer-events-auto">
-      <div className="bg-slate-900 p-6 text-white flex justify-between items-center">
-        <div>
-          <h3 className="text-xl font-black uppercase tracking-tight">{isEditing ? 'Düzenle' : 'Detaylar'}</h3>
-          <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">İş Emri: #{service.id.slice(-6)}</p>
+    <motion.div 
+      initial={{ opacity: 0, y: 20, scale: 0.95 }} 
+      animate={{ opacity: 1, y: 0, scale: 1 }} 
+      className="bg-white w-full max-w-2xl rounded-[3rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] overflow-hidden pointer-events-auto relative z-10 border border-white/20"
+    >
+      <div className="bg-slate-900 p-8 text-white flex justify-between items-center relative overflow-hidden">
+        {/* Animated background accent */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-20 -mt-20 shrink-0" />
+        
+        <div className="relative z-10">
+          <h3 className="text-2xl font-black uppercase tracking-tighter">{isEditing ? 'İŞ EMRİ DÜZENLE' : 'DETAYLAR'}</h3>
+          <p className="text-[11px] font-bold text-blue-400 uppercase tracking-widest mt-1">İş Emri: #{service.id.slice(-6)}</p>
         </div>
-        <button onClick={onClose} className="p-2 text-slate-400 hover:text-white"><X className="w-8 h-8" /></button>
+        <button onClick={onClose} className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-all relative z-10 active:scale-90">
+          <X className="w-6 h-6" />
+        </button>
       </div>
 
-      <div className="p-8 max-h-[80vh] overflow-y-auto custom-scrollbar">
+      <div className="p-10 max-h-[75vh] overflow-y-auto custom-scrollbar bg-white">
         {isEditing ? (
-          <form onSubmit={handleUpdate} className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Durum</label>
+          <form onSubmit={handleUpdate} className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Durum Güncelle</label>
                 <select 
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold"
+                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold focus:border-blue-500 outline-none transition-all"
                   value={editData.status}
                   onChange={e => setEditData({...editData, status: e.target.value as any})}
                 >
@@ -1214,10 +1270,10 @@ function ServiceDetailModal({ service, onClose, isStaffView, technicians }: { se
                   ))}
                 </select>
               </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Teknisyen</label>
+              <div className="space-y-3">
+                <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Teknisyen Ata</label>
                 <select 
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold"
+                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold focus:border-blue-500 outline-none transition-all"
                   value={editData.technicianId || ''}
                   onChange={e => setEditData({...editData, technicianId: e.target.value})}
                 >
@@ -1228,76 +1284,117 @@ function ServiceDetailModal({ service, onClose, isStaffView, technicians }: { se
                 </select>
               </div>
             </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Açıklama</label>
+            <div className="space-y-3">
+              <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Problem Detayı</label>
               <textarea 
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold min-h-[120px]"
+                className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold min-h-[150px] focus:border-blue-500 outline-none transition-all"
                 value={editData.description}
                 onChange={e => setEditData({...editData, description: e.target.value})}
               />
             </div>
             {editData.status === 'COMPLETED' && (
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Teknisyen Notu</label>
+              <div className="space-y-3">
+                <label className="text-[11px] font-black text-emerald-600 uppercase tracking-[0.2em] px-1">Çözüm Notu / Kapanış</label>
                 <textarea 
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold min-h-[100px]"
+                  className="w-full bg-emerald-50/50 border-2 border-emerald-100 rounded-2xl px-5 py-4 text-sm font-bold min-h-[120px] focus:border-emerald-500 outline-none transition-all"
                   value={editData.notes || ''}
                   onChange={e => setEditData({...editData, notes: e.target.value})}
-                  placeholder="Yapılan işlemleri buraya yazın..."
+                  placeholder="Yapılan işlemleri detaylandırın..."
                 />
               </div>
             )}
-            <div className="flex gap-4 pt-4">
-              <button type="button" onClick={() => setIsEditing(false)} className="flex-1 py-4 border-2 border-slate-200 rounded-2xl font-black uppercase tracking-widest text-slate-400 hover:bg-slate-50 transition-all">İptal</button>
-              <button type="submit" className="flex-2 py-4 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-blue-500/20 hover:bg-blue-700 transition-all">Kaydet</button>
+            <div className="flex flex-col md:flex-row gap-4 pt-6">
+              <button 
+                type="button" 
+                onClick={() => setIsEditing(false)} 
+                className="flex-1 py-5 border-2 border-slate-100 rounded-3xl font-black uppercase tracking-widest text-slate-400 hover:bg-slate-50 transition-all active:scale-95"
+              >
+                Vazgeç
+              </button>
+              <button 
+                type="submit" 
+                className="flex-[2] py-5 bg-blue-600 text-white rounded-3xl font-black uppercase tracking-widest shadow-2xl shadow-blue-500/30 hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center gap-3"
+              >
+                <Check className="w-5 h-5" />
+                Duyuları Kaydet
+              </button>
             </div>
           </form>
         ) : (
-          <div className="space-y-8">
-            <div className="flex justify-between items-start">
-              <div>
-                <h4 className="text-2xl font-black text-slate-900 uppercase tracking-tight">{service.customerName}</h4>
-                <p className="text-xs font-bold text-slate-400 mt-1 uppercase truncate max-w-md">{service.customerAddress}</p>
+          <div className="space-y-10 animate-in fade-in duration-500">
+            <div className="flex flex-col md:flex-row justify-between items-start gap-4">
+              <div className="space-y-1">
+                <h4 className="text-3xl font-black text-slate-900 uppercase tracking-tighter leading-none">{service.customerName}</h4>
+                <div className="flex items-center gap-2 text-slate-400">
+                  <MapPin className="w-3.5 h-3.5" />
+                  <p className="text-[11px] font-bold uppercase tracking-widest truncate max-w-sm">{service.customerAddress}</p>
+                </div>
               </div>
-              <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${statusLabels[service.status]?.color || 'bg-slate-100'} text-white shadow-sm`}>
+              <div className={`px-5 py-2 rounded-2xl text-[11px] font-black uppercase tracking-[0.1em] ${statusLabels[service.status]?.color || 'bg-slate-100'} text-white shadow-lg ring-4 ring-white`}>
                 {statusLabels[service.status]?.label || service.status}
-              </span>
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
-               <div className="bg-slate-50 p-4 rounded-2xl">
-                  <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Cihaz</p>
-                  <p className="text-sm font-black text-slate-900 truncate">{service.deviceInfo || 'Belirtilmemiş'}</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+               <div className="bg-slate-50/80 p-5 rounded-[2rem] border border-slate-100">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Cihaz Modeli</p>
+                  <p className="text-sm font-black text-slate-900">{service.deviceInfo || 'Belirtilmemiş'}</p>
                </div>
-               <div className="bg-slate-50 p-4 rounded-2xl">
-                  <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Teknisyen</p>
-                  <p className="text-sm font-black text-slate-900 truncate">{service.technicianName || 'Atanmadı'}</p>
+               <div className="bg-slate-50/80 p-5 rounded-[2rem] border border-slate-100">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Görevli Teknisyen</p>
+                  <p className="text-sm font-black text-slate-900">{service.technicianName || 'Atanmadı'}</p>
                </div>
-               <div className="bg-slate-50 p-4 rounded-2xl">
-                  <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Hizmet Türü</p>
-                  <p className="text-sm font-black text-slate-900">{service.type}</p>
+               <div className="bg-slate-50/80 p-5 rounded-[2rem] border border-slate-100">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Hizmet Kategorisi</p>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-blue-500" />
+                    <p className="text-sm font-black text-slate-900 uppercase">{service.type}</p>
+                  </div>
                </div>
             </div>
 
-            <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 italic">
-               <p className="text-[8px] font-black text-slate-400 uppercase mb-2">Açıklama</p>
-               <p className="text-sm font-medium text-slate-600 leading-relaxed tabular-nums">"{service.description}"</p>
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 px-1">
+                <div className="h-[1px] flex-1 bg-slate-100"></div>
+                <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Saha Notları</p>
+                <div className="h-[1px] flex-1 bg-slate-100"></div>
+              </div>
+              
+              <div className="bg-slate-50 rounded-[2.5rem] p-8 border-2 border-dashed border-slate-200">
+                 <p className="text-base font-medium text-slate-600 leading-relaxed tabular-nums">
+                   <span className="text-4xl text-slate-200 font-serif leading-none mr-2">"</span>
+                   {service.description}
+                 </p>
+              </div>
             </div>
 
             {service.notes && (
-              <div className="bg-emerald-50 p-6 rounded-3xl border border-emerald-100">
-                <p className="text-[8px] font-black text-emerald-600 uppercase mb-2">Tamamlanma Notu</p>
-                <p className="text-sm font-bold text-emerald-800 leading-relaxed whitespace-pre-wrap">{service.notes}</p>
+              <div className="bg-emerald-50/50 p-8 rounded-[2.5rem] border border-emerald-100 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl -mr-16 -mt-16" />
+                <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <ClipboardCheck className="w-4 h-4" />
+                  Kapanış ve Çözüm Notu
+                </p>
+                <p className="text-sm font-bold text-emerald-800 leading-relaxed whitespace-pre-wrap relative z-10">{service.notes}</p>
               </div>
             )}
 
             {!isStaffView && (
-              <button 
-                onClick={() => setIsEditing(true)}
-                className="w-full py-4 border-2 border-slate-900 rounded-2xl text-slate-900 font-black uppercase tracking-widest hover:bg-slate-900 hover:text-white transition-all shadow-sm"
-              >
-                Bilgileri Düzenle / Teknisyen Değiştir
-              </button>
+              <div className="pt-6 space-y-4">
+                <button 
+                  onClick={() => setIsEditing(true)}
+                  className="w-full py-6 bg-slate-900 text-white rounded-[2rem] text-sm font-black uppercase tracking-widest hover:bg-blue-600 hover:-translate-y-1 transition-all shadow-2xl shadow-slate-200 active:scale-95 flex items-center justify-center gap-4 group"
+                >
+                  <div className="w-8 h-8 bg-white/10 rounded-xl flex items-center justify-center group-hover:bg-white/20 transition-colors">
+                    <Edit2 className="w-4 h-4" />
+                  </div>
+                  İş Emrini Düzenle
+                </button>
+                <div className="flex items-center justify-center gap-2 text-slate-400">
+                  <ShieldCheck className="w-4 h-4" />
+                  <p className="text-[10px] font-black uppercase tracking-widest">Yönetici Yetkisi Aktif</p>
+                </div>
+              </div>
             )}
           </div>
         )}
@@ -1312,6 +1409,24 @@ function ServiceManagement({ services, technicians, customers, initialFilter, se
   const [searchPending, setSearchPending] = useState('');
   const [searchActive, setSearchActive] = useState('');
   const [searchCompleted, setSearchCompleted] = useState('');
+
+  // Handle initial filter from dashboard
+  const columnRefs = {
+    PENDING: useRef<HTMLDivElement>(null),
+    ACTIVE: useRef<HTMLDivElement>(null),
+    COMPLETED: useRef<HTMLDivElement>(null)
+  };
+
+  useEffect(() => {
+    if (initialFilter === 'ACTIVE') {
+      columnRefs.ACTIVE.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (initialFilter === 'WAITING_PART') {
+      setSearchActive('parça');
+      columnRefs.ACTIVE.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (initialFilter === 'PENDING') {
+      columnRefs.PENDING.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [initialFilter]);
 
   const filterFn = (list: ServiceRequest[], term: string) => {
     if (!term) return list;
@@ -1365,6 +1480,7 @@ function ServiceManagement({ services, technicians, customers, initialFilter, se
           return (
             <div 
               key={column.key} 
+              ref={columnRefs[column.key as keyof typeof columnRefs]}
               className={`flex-1 flex flex-col bg-slate-50/50 rounded-[2.5rem] border-t-4 ${column.accent} shadow-sm min-h-0 overflow-hidden`}
             >
                {/* Column Header */}
@@ -2350,40 +2466,71 @@ function JobDetail({ service, onBack }: { service: ServiceRequest, onBack: () =>
 
 function AuthView() {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6 text-slate-900">
-      <div className="w-full max-w-sm text-center space-y-12">
-        <div className="space-y-6">
-          <div className="flex justify-center">
-             <img src="/input_file_0.png" alt="Hürmak Logo" className="w-48 h-auto object-contain drop-shadow-sm" />
-          </div>
-          <div className="space-y-2">
-            <h1 className="text-3xl font-black text-slate-900 tracking-tighter uppercase">Saha Yönetim Sistemi</h1>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">Dijital Servis Çözümleri</p>
-          </div>
+    <div className="min-h-screen flex flex-col items-center justify-center mesh-bg p-6 text-slate-900 relative overflow-hidden">
+      {/* Decorative Orbs */}
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-500/10 rounded-full blur-[100px]" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-500/10 rounded-full blur-[100px]" />
+
+      <div className="w-full max-w-md text-center space-y-12 relative z-10">
+        <div className="space-y-8">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex justify-center"
+          >
+             <img 
+               src="/input_file_0.png" 
+               alt="Hürmak" 
+               className="w-56 h-auto object-contain drop-shadow-2xl"
+             />
+          </motion.div>
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="space-y-2"
+          >
+            <h1 className="text-4xl font-black text-slate-900 tracking-tighter uppercase">Saha Operasyon Sistemi</h1>
+            <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.6em]">Dijital Servis ve Takip Çözümleri</p>
+          </motion.div>
         </div>
         
         <div className="grid grid-cols-2 gap-4">
           {[
             { icon: Camera, label: 'Fotoğraf' },
-            { icon: CheckSquare, label: 'İmza' },
+            { icon: CheckSquare, label: 'Dijital İmza' },
             { icon: ClipboardCheck, label: 'Checklist' },
-            { icon: MapPin, label: 'Konum' }
+            { icon: MapPin, label: 'Konum Takibi' }
           ].map((feature, i) => (
-            <div key={i} className="p-4 bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col items-center gap-3">
-              <div className="w-10 h-10 bg-slate-50 rounded-lg flex items-center justify-center text-blue-600">
+            <motion.div 
+              key={i} 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.3 + i * 0.1 }}
+              className="glass p-5 rounded-[2rem] flex flex-col items-center gap-3"
+            >
+              <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 shadow-inner">
                 <feature.icon className="w-6 h-6" />
               </div>
-              <span className="text-xs font-bold text-slate-600 uppercase tracking-tight">{feature.label}</span>
-            </div>
+              <span className="text-[10px] font-black text-slate-900 uppercase tracking-tight">{feature.label}</span>
+            </motion.div>
           ))}
         </div>
 
-        <button
+        <motion.button
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8 }}
           onClick={signInWithGoogle}
-          className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-blue-600 text-white rounded-xl font-bold text-sm shadow-xl shadow-blue-200 hover:bg-blue-700 transition-all active:scale-95 uppercase tracking-widest"
+          className="w-full flex items-center justify-center gap-4 px-8 py-5 bg-slate-900 text-white rounded-[2rem] font-black text-sm shadow-2xl shadow-blue-900/20 hover:bg-blue-600 hover:-translate-y-1 transition-all active:scale-95 uppercase tracking-widest group"
         >
-          Google Hesabı ile Başla
-        </button>
+          <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center group-hover:rotate-[360deg] transition-transform duration-700">
+            <ChevronRight className="w-4 h-4 text-slate-900" />
+          </div>
+          SİSTEME GİRİŞ YAP
+        </motion.button>
+        
+        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest opacity-50">© 2026 Hürmak Büro Makineleri • Ver. 2.4.0</p>
       </div>
     </div>
   );
