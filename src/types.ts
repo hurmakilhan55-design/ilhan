@@ -7,7 +7,7 @@ export type ServiceStatus =
   | 'REVISIT_REQUIRED'
   | 'CANCELLED';
 
-export type ServiceType = 'FAULT' | 'MAINTENANCE' | 'VISIT' | 'DELIVERY' | 'PAYMENT_COLLECTION';
+export type ServiceType = 'FAULT' | 'MAINTENANCE' | 'VISIT' | 'DELIVERY' | 'PAYMENT_COLLECTION' | 'INSTALLATION';
 export type UserRole = 'ADMIN' | 'TECHNICIAN';
 
 export interface Device {
@@ -30,6 +30,8 @@ export interface Customer {
   id: string;
   name: string;
   address: string;
+  city: string;
+  district: string;
   phone: string;
   maintenanceIntervalMonths: number;
   lastVisitDate?: any;
@@ -71,6 +73,8 @@ export interface ServiceRequest {
   counterReading?: number;
   tonerCountReported?: number;
   paymentCollected?: number;
+  priority?: 'NORMAL' | 'URGENT';
+  isUrgent?: boolean;
 }
 
 export interface PaymentFollowUp {
